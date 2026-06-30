@@ -1,0 +1,3501 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tarjetas de estudio - Coloquio de Matemática</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #15120F;
+    --surface: #1E1A16;
+    --surface2: #2A2420;
+    --ink: #F0EDE6;
+    --ink2: #9A9088;
+    --ink3: #6A6058;
+    --accent: #D4622A;
+    --border: #2E2922;
+    --card-f-bg: #1E1A16;
+    --card-f-text: #F0EDE6;
+    --card-b-bg: #2f333a;
+    --card-b-text: #F4F0E8;
+    --card-b-muted: #D7B98A;
+    --correct-bg: rgba(45,106,79,0.18);
+    --correct-border: #2D6A4F;
+    --correct-text: #74C69D;
+    --wrong-bg: rgba(123,45,45,0.18);
+    --wrong-border: #7B2D2D;
+    --wrong-text: #E07A7A;
+    --hint-bg: rgba(212,98,42,0.12);
+  }
+
+  body {
+    font-family: "DM Sans", "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  button { font: inherit; }
+  .container { width: 100%; max-width: 700px; }
+
+  header { text-align: center; margin-bottom: 1.35rem; }
+  .header-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: .5rem;
+  }
+  header h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.55rem, 8vw, 2.25rem);
+    font-weight: 300;
+    line-height: 1.15;
+    color: var(--ink);
+    letter-spacing: 0;
+  }
+  header h1 em { font-style: italic; }
+  .header-sub {
+    font-size: 13px;
+    color: var(--ink3);
+    margin-top: .6rem;
+    line-height: 1.45;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .stat-pill.correct { background: var(--correct-bg); color: var(--correct-text); border-color: var(--correct-border); }
+  .stat-pill.wrong { background: var(--wrong-bg); color: var(--wrong-text); border-color: var(--wrong-border); }
+  .stat-pill.pending, .stat-pill.total { background: var(--surface); color: var(--ink3); border-color: var(--border); }
+  .stat-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  .panel-block { margin-bottom: 1rem; }
+  .panel-title {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: .55rem;
+  }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 0 0 .35rem;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 6px 14px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--ink2);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .tab:hover { border-color: var(--ink3); color: var(--ink); }
+  .tab.active { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: .75rem 0 1rem;
+  }
+  .hint-top-btn {
+    flex: 0 0 auto;
+    background: rgba(212,98,42,.12);
+    border-color: rgba(212,98,42,.34);
+    color: #E4C07A;
+    font-weight: 700;
+  }
+  .progress-track { flex: 1; height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 1px; transition: width .4s ease; }
+  .progress-label { font-size: 12px; color: var(--ink3); min-width: 44px; text-align: right; }
+
+  .card-scene {
+    perspective: 1400px;
+    margin-bottom: .9rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card-wrap {
+    width: 100%;
+    height: min(58vh, 430px);
+    min-height: 320px;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform .58s cubic-bezier(.4,0,.2,1), filter .28s ease, box-shadow .28s ease;
+  }
+  .card-wrap.flipped { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 18px;
+    padding: 1.35rem 1.45rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(0,0,0,.22);
+  }
+  .face-front {
+    background: var(--card-f-bg);
+    border: 1px solid var(--border);
+    color: var(--card-f-text);
+  }
+  .face-back {
+    background: linear-gradient(155deg, #343941, var(--card-b-bg));
+    color: var(--card-b-text);
+    border: 1px solid #464d57;
+    transform: rotateY(180deg);
+  }
+  .card-face-label {
+    position: absolute;
+    top: 1.15rem;
+    left: 1.35rem;
+    max-width: calc(100% - 5.5rem);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .face-back .card-face-label { color: var(--card-b-muted); }
+  .card-menu {
+    position: absolute;
+    top: 1rem;
+    right: 1.2rem;
+    color: currentColor;
+    opacity: .72;
+    font-size: 22px;
+    line-height: 1;
+  }
+  .card-mark-indicator {
+    position: absolute;
+    top: 2.75rem;
+    left: 1.3rem;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    padding: 3px 10px;
+    border-radius: 100px;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .card-mark-indicator.show { opacity: 1; }
+  .card-mark-indicator.correcta { background: var(--correct-bg); color: var(--correct-text); }
+  .card-mark-indicator.incorrecta { background: var(--wrong-bg); color: var(--wrong-text); }
+
+  .card-q {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.35rem, 7vw, 2rem);
+    font-weight: 300;
+    line-height: 1.45;
+    color: var(--card-f-text);
+    overflow-wrap: anywhere;
+  }
+  .options {
+    list-style: none;
+    display: grid;
+    gap: 8px;
+    margin-top: 1.1rem;
+  }
+  .options li {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 9px 11px;
+    color: var(--ink2);
+    background: rgba(255,255,255,.025);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .card-a {
+    font-size: 13px;
+    line-height: 1.72;
+    color: var(--card-b-text);
+    overflow-y: auto;
+    max-height: calc(100% - 1.5rem);
+    padding-right: 4px;
+  }
+  .card-a::-webkit-scrollbar { width: 3px; }
+  .card-a::-webkit-scrollbar-track { background: transparent; }
+  .card-a::-webkit-scrollbar-thumb { background: rgba(128,128,128,.35); border-radius: 2px; }
+  .answer-title {
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #E4C07A;
+    margin: 1.1rem 0 .35rem;
+    font-weight: 800;
+  }
+  .answer-main {
+    font-size: clamp(1.05rem, 4.8vw, 1.35rem);
+    line-height: 1.45;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin-bottom: .95rem;
+  }
+  .answer-explanation {
+    font-size: 13px;
+    line-height: 1.72;
+    color: #E6E1D8;
+  }
+  .hint-box {
+    position: absolute;
+    left: 1.25rem;
+    right: 1.25rem;
+    bottom: 3rem;
+    border: 1px solid rgba(212,98,42,.32);
+    background: var(--hint-bg);
+    color: var(--ink2);
+    border-radius: 12px;
+    padding: .7rem .8rem;
+    font-size: 12px;
+    line-height: 1.45;
+    animation: riseIn .2s ease;
+  }
+  .flip-hint {
+    position: absolute;
+    bottom: 1.15rem;
+    right: 1.35rem;
+    font-size: 11px;
+    color: var(--ink3);
+  }
+  .face-back .flip-hint { color: #B9C4D0; }
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes enterFromRight {
+    from { opacity: 0; transform: translateX(26px) scale(.985); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  @keyframes enterFromLeft {
+    from { opacity: 0; transform: translateX(-26px) scale(.985); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  .card-scene.enter-right { animation: enterFromRight .34s ease both; }
+  .card-scene.enter-left { animation: enterFromLeft .34s ease both; }
+  .card-wrap.marking-correcta .card-face {
+    background: linear-gradient(155deg, rgba(45,106,79,.82), rgba(29,70,53,.94));
+    border-color: var(--correct-border);
+    box-shadow: 0 0 0 1px rgba(116,198,157,.35), 0 24px 70px rgba(45,106,79,.28);
+  }
+  .card-wrap.marking-incorrecta .card-face {
+    background: linear-gradient(155deg, rgba(123,45,45,.84), rgba(72,31,33,.96));
+    border-color: var(--wrong-border);
+    box-shadow: 0 0 0 1px rgba(224,122,122,.35), 0 24px 70px rgba(123,45,45,.28);
+  }
+
+  .mark-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 1rem;
+    min-height: 44px;
+    align-items: center;
+  }
+  .mark-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 18px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid transparent;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(6px);
+    transition: opacity .25s, transform .25s, filter .18s;
+  }
+  .mark-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  .mark-btn.correct-btn { background: var(--correct-bg); color: var(--correct-text); border-color: var(--correct-border); }
+  .mark-btn.wrong-btn { background: var(--wrong-bg); color: var(--wrong-text); border-color: var(--wrong-border); }
+  .mark-btn:hover { filter: brightness(1.16); }
+
+  .nav {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: .9rem;
+  }
+  .nav-btn, .action-btn {
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all .18s;
+    white-space: nowrap;
+  }
+  .nav-btn { padding: 10px 14px; font-size: 13px; }
+  .nav-btn:hover:not(:disabled), .action-btn:hover { background: var(--surface2); border-color: var(--ink3); }
+  .nav-btn:disabled { opacity: .3; cursor: default; }
+  .prev-btn { justify-self: start; }
+  .next-btn { justify-self: end; }
+  .nav-center { text-align: center; min-width: 70px; }
+  .nav-count {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.08rem;
+    font-weight: 300;
+    color: var(--ink);
+    display: block;
+  }
+  .nav-unit-label {
+    display: block;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    color: var(--ink3);
+  }
+  .actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+  .action-btn {
+    padding: 8px 14px;
+    color: var(--ink2);
+    background: transparent;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .empty {
+    min-height: 260px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    color: var(--ink3);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--surface);
+    padding: 2rem;
+    line-height: 1.5;
+  }
+  .kb-hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink3);
+    margin-top: 1.4rem;
+    line-height: 2.2;
+  }
+  kbd {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 11px;
+    color: var(--ink2);
+  }
+
+  @media (max-width: 420px) {
+    body { padding: 1.1rem .75rem 2.5rem; }
+    .progress-row { flex-wrap: wrap; }
+    .progress-row .progress-track { flex-basis: calc(100% - 54px); }
+    .hint-top-btn { flex: 1 1 calc(50% - 6px); justify-content: center; }
+    .card-wrap { height: 54vh; min-height: 300px; }
+    .card-face { padding: 1.2rem; border-radius: 16px; }
+    .card-face-label { left: 1.15rem; top: 1rem; max-width: calc(100% - 4.7rem); }
+    .card-menu { top: .82rem; right: 1rem; }
+    .card-q { font-size: clamp(1.22rem, 7.5vw, 1.65rem); }
+    .card-a { font-size: 12.5px; line-height: 1.65; }
+    .hint-box { left: 1rem; right: 1rem; bottom: 2.7rem; }
+    .flip-hint { right: 1rem; }
+    .mark-row { gap: 8px; }
+    .mark-btn { flex: 1; justify-content: center; padding: 10px 10px; }
+    .nav-btn { padding: 9px 12px; }
+    .action-btn { flex: 1 1 auto; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-label">Tarjetas de Estudio</div>
+    <h1>Coloquio de <em>Matemática</em></h1>
+    <p class="header-sub">Preguntas del archivo PREGUNTAS.md para practicar con tarjetas</p>
+  </header>
+
+  <div class="stats-bar">
+    <div class="stat-pill total">Total: <strong id="stat-total">0</strong></div>
+    <div class="stat-pill correct"><div class="stat-dot"></div> Correctas: <strong id="stat-correct">0</strong></div>
+    <div class="stat-pill wrong"><div class="stat-dot"></div> Incorrectas: <strong id="stat-wrong">0</strong></div>
+    <div class="stat-pill pending">Sin marcar: <strong id="stat-pending">0</strong></div>
+    <div class="stat-pill total">Aciertos: <strong id="stat-rate">0%</strong></div>
+  </div>
+
+  <div class="panel-block">
+    <div class="panel-title">Temas</div>
+    <div class="tabs" id="topic-tabs"></div>
+  </div>
+
+  <div class="panel-block">
+    <div class="panel-title">Estado</div>
+    <div class="tabs" id="status-tabs">
+      <button class="tab active" data-status="todas">Todas</button>
+      <button class="tab" data-status="sin responder">Sin responder</button>
+      <button class="tab" data-status="correcta">Correctas</button>
+      <button class="tab" data-status="incorrecta">Incorrectas</button>
+    </div>
+  </div>
+
+  <div class="progress-row">
+    <button class="action-btn hint-top-btn" id="btn-hint" type="button">Ver pista</button>
+    <button class="action-btn hint-top-btn" id="btn-flip" type="button">Ver respuesta</button>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="progress-label" id="progress-label">0%</div>
+  </div>
+
+  <div id="study-area"></div>
+
+  <div class="mark-row">
+    <button class="mark-btn wrong-btn" id="btn-wrong" type="button">
+      <span>✕</span> No la sabía
+    </button>
+    <button class="mark-btn correct-btn" id="btn-correct" type="button">
+      <span>✓</span> La sabía
+    </button>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn prev-btn" id="btn-prev" type="button">← Anterior</button>
+    <div class="nav-center">
+      <span class="nav-count" id="nav-count">0 / 0</span>
+      <span class="nav-unit-label" id="nav-topic">Sin tema</span>
+    </div>
+    <button class="nav-btn next-btn" id="btn-next" type="button">Siguiente →</button>
+  </div>
+
+  <div class="actions">
+    <button class="action-btn" id="btn-shuffle" type="button">Mezclar</button>
+    <button class="action-btn" id="btn-reset" type="button">Reiniciar</button>
+  </div>
+
+  <div class="kb-hint">
+    <kbd>←</kbd> <kbd>→</kbd> navegar &nbsp;·&nbsp; <kbd>Espacio</kbd> voltear &nbsp;·&nbsp; <kbd>C</kbd> correcta &nbsp;·&nbsp; <kbd>X</kbd> incorrecta
+  </div>
+</div>
+
+<script>
+const tarjetas = [
+  {
+    "id": 1,
+    "tema": "3- Lógica",
+    "pregunta": "¿Qué define a una proposición en lógica?",
+    "opciones": [],
+    "respuesta": "Es una oración o enunciado del cual se puede afirmar que es verdadero o falso.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "En lógica, solo interesan los enunciados que pueden evaluarse con un valor de verdad. Una proposición debe poder ser verdadera o falsa, aunque no sepamos todavía cuál de las dos cosas ocurre. Por eso preguntas, órdenes o expresiones de deseo no entran en esta categoría.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 2,
+    "tema": "3- Lógica",
+    "pregunta": "¿Por qué una orden como \"Pélame una uva\" no se considera una proposición?",
+    "opciones": [],
+    "respuesta": "Porque no tiene un valor de verdad (no es ni verdadera ni falsa).",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En lógica, solo interesan los enunciados que pueden evaluarse con un valor de verdad. Una proposición debe poder ser verdadera o falsa, aunque no sepamos todavía cuál de las dos cosas ocurre. Por eso preguntas, órdenes o expresiones de deseo no entran en esta categoría.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 3,
+    "tema": "3- Lógica",
+    "pregunta": "Concepto: Axioma",
+    "opciones": [],
+    "respuesta": "Postulado evidente que se admite como cierto sin necesidad de demostración.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Un axioma funciona como punto de partida de una teoría matemática. No se demuestra dentro de esa teoría, sino que se acepta para poder construir definiciones, teoremas y demostraciones. Su importancia está en que sostiene razonamientos posteriores.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 4,
+    "tema": "3- Lógica",
+    "pregunta": "Concepto: Teorema",
+    "opciones": [],
+    "respuesta": "Enunciado que es siempre verdadero y que requiere de una demostración lógica.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Un teorema no es una suposición: es un enunciado cuya verdad se justifica mediante una demostración. La demostración conecta hipótesis, axiomas, definiciones y reglas lógicas hasta llegar a la conclusión. Por eso tiene un valor más fuerte que una conjetura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 5,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cuál es la diferencia principal entre un concepto primitivo y una definición?",
+    "opciones": [],
+    "respuesta": "El concepto primitivo se acepta sin definición (ej. punto), mientras que la definición expone características distintivas.",
+    "pista": "Compará qué elementos quedan y cuáles se eliminan.",
+    "explicacion": "Un concepto primitivo se toma como básico y no se explica usando conceptos anteriores. En cambio, una definición caracteriza un objeto mediante propiedades que permiten reconocerlo. Esta diferencia evita definiciones circulares dentro de una teoría.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 6,
+    "tema": "3- Lógica",
+    "pregunta": "¿Qué es una conjetura en el ámbito matemático?",
+    "opciones": [],
+    "respuesta": "Es una afirmación que se supone cierta pero que aún no ha sido probada ni refutada.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una conjetura es una afirmación plausible, pero todavía no tiene demostración aceptada ni contraejemplo. En matemática, hasta que no se prueba, no alcanza para usarla como teorema. Si aparece un contraejemplo, queda refutada.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 7,
+    "tema": "3- Lógica",
+    "pregunta": "En un teorema, ¿cómo se denomina al enunciado que se asume como punto de partida?",
+    "opciones": [],
+    "respuesta": "Hipótesis.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Un teorema no es una suposición: es un enunciado cuya verdad se justifica mediante una demostración. La demostración conecta hipótesis, axiomas, definiciones y reglas lógicas hasta llegar a la conclusión. Por eso tiene un valor más fuerte que una conjetura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 8,
+    "tema": "3- Lógica",
+    "pregunta": "En un teorema, ¿cómo se denomina al enunciado que se quiere demostrar?",
+    "opciones": [],
+    "respuesta": "Tesis o conclusión.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Un teorema no es una suposición: es un enunciado cuya verdad se justifica mediante una demostración. La demostración conecta hipótesis, axiomas, definiciones y reglas lógicas hasta llegar a la conclusión. Por eso tiene un valor más fuerte que una conjetura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 9,
+    "tema": "3- Lógica",
+    "pregunta": "¿Qué es un corolario?",
+    "opciones": [],
+    "respuesta": "Es una proposición que se deduce directamente de un teorema ya demostrado.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Un corolario se obtiene como consecuencia casi inmediata de un teorema ya probado. No suele requerir una demostración larga, porque aprovecha directamente un resultado anterior. Sirve para registrar consecuencias útiles del teorema principal.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 10,
+    "tema": "3- Lógica",
+    "pregunta": "Si la proposición p es verdadera, ¿cuál es el valor de verdad de su negación ¬p?",
+    "opciones": [],
+    "respuesta": "Falsa.",
+    "pista": "Pensá qué cambia cuando se niega toda la proposición, no solo una parte.",
+    "explicacion": "En lógica, solo interesan los enunciados que pueden evaluarse con un valor de verdad. Una proposición debe poder ser verdadera o falsa, aunque no sepamos todavía cuál de las dos cosas ocurre. Por eso preguntas, órdenes o expresiones de deseo no entran en esta categoría.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 11,
+    "tema": "3- Lógica",
+    "pregunta": "¿Bajo qué única condición es verdadera la conjunción p ∧ q?",
+    "opciones": [],
+    "respuesta": "Únicamente cuando tanto p como q son verdaderas.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La conjunción representa un “y” lógico. Para que p ∧ q sea verdadera deben cumplirse simultáneamente las dos partes. Si una sola falla, ya no es cierto que ocurran ambas a la vez.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 12,
+    "tema": "3- Lógica",
+    "pregunta": "¿Bajo qué única condición es falsa la disyunción p ∨ q?",
+    "opciones": [],
+    "respuesta": "Únicamente cuando tanto p como q son falsas.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La disyunción inclusiva representa un “o” lógico: alcanza con que una de las proposiciones sea verdadera. Solo falla cuando no se cumple ninguna de las dos. Por eso p ∨ q es falsa únicamente si p y q son falsas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 13,
+    "tema": "3- Lógica",
+    "pregunta": "¿En qué caso una proposición condicional p → q resulta falsa?",
+    "opciones": [],
+    "respuesta": "Cuando el antecedente (p) es verdadero y el consecuente (q) es falso.",
+    "pista": "Revisá el papel del antecedente y del consecuente.",
+    "explicacion": "En lógica, solo interesan los enunciados que pueden evaluarse con un valor de verdad. Una proposición debe poder ser verdadera o falsa, aunque no sepamos todavía cuál de las dos cosas ocurre. Por eso preguntas, órdenes o expresiones de deseo no entran en esta categoría.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 14,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cómo se representa simbólicamente la doble implicación entre p y q?",
+    "opciones": [],
+    "respuesta": "p ↔ q",
+    "pista": "Revisá el papel del antecedente y del consecuente.",
+    "explicacion": "En una implicación p → q se promete que si ocurre p, entonces ocurre q. El único caso que rompe esa promesa es que p sea verdadera y q falsa. Si p no ocurre, la implicación no queda contradicha.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 15,
+    "tema": "3- Lógica",
+    "pregunta": "¿Qué es una tabla de verdad?",
+    "opciones": [],
+    "respuesta": "Es una representación gráfica que muestra todos los posibles valores de verdad de una proposición compuesta.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una tabla de verdad organiza todos los casos posibles para las proposiciones simples. Al evaluar cada fila se ve cómo se comporta la proposición compuesta. Esto permite decidir si una fórmula es siempre verdadera, siempre falsa o depende del caso.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 16,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cuándo se dice que una proposición compuesta es una tautología?",
+    "opciones": [],
+    "respuesta": "Cuando es verdadera para todos los posibles valores de verdad de sus componentes.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En lógica, solo interesan los enunciados que pueden evaluarse con un valor de verdad. Una proposición debe poder ser verdadera o falsa, aunque no sepamos todavía cuál de las dos cosas ocurre. Por eso preguntas, órdenes o expresiones de deseo no entran en esta categoría.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 17,
+    "tema": "3- Lógica",
+    "pregunta": "¿Qué define a una contradicción en lógica proposicional?",
+    "opciones": [],
+    "respuesta": "Es una proposición que resulta falsa en todos los casos de su tabla de verdad.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Una contradicción ocurre cuando una fórmula no puede ser verdadera bajo ninguna asignación de valores. En su tabla de verdad todas las filas terminan en falso. Esto suele indicar una incompatibilidad lógica interna.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 18,
+    "tema": "3- Lógica",
+    "pregunta": "¿Qué es una contingencia?",
+    "opciones": [],
+    "respuesta": "Es una proposición compuesta que no es ni una tautología ni una contradicción.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una contingencia depende de los valores de sus proposiciones simples. Algunas filas de la tabla dan verdadero y otras falso. Por eso no es una verdad lógica universal ni una imposibilidad lógica.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 19,
+    "tema": "3- Lógica",
+    "pregunta": "Dada la implicación p → q, ¿cuál es su recíproca?",
+    "opciones": [],
+    "respuesta": "q → p",
+    "pista": "Revisá el papel del antecedente y del consecuente.",
+    "explicacion": "En una implicación p → q se promete que si ocurre p, entonces ocurre q. El único caso que rompe esa promesa es que p sea verdadera y q falsa. Si p no ocurre, la implicación no queda contradicha.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 20,
+    "tema": "3- Lógica",
+    "pregunta": "Dada la implicación p → q, ¿cuál es su contrarrecíproca?",
+    "opciones": [],
+    "respuesta": "¬q → ¬p",
+    "pista": "Revisá el papel del antecedente y del consecuente.",
+    "explicacion": "En una implicación p → q se promete que si ocurre p, entonces ocurre q. El único caso que rompe esa promesa es que p sea verdadera y q falsa. Si p no ocurre, la implicación no queda contradicha.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 21,
+    "tema": "3- Lógica",
+    "pregunta": "La negación de una conjunción ¬(p ∧ q) equivale a la disyunción de las negaciones:",
+    "opciones": [],
+    "respuesta": "¬p ∨ ¬q",
+    "pista": "Pensá qué cambia cuando se niega toda la proposición, no solo una parte.",
+    "explicacion": "La conjunción representa un “y” lógico. Para que p ∧ q sea verdadera deben cumplirse simultáneamente las dos partes. Si una sola falla, ya no es cierto que ocurran ambas a la vez.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 22,
+    "tema": "3- Lógica",
+    "pregunta": "La negación de una disyunción ¬(p ∨ q) equivale a la conjunción de las negaciones:",
+    "opciones": [],
+    "respuesta": "¬p ∧ ¬q",
+    "pista": "Pensá qué cambia cuando se niega toda la proposición, no solo una parte.",
+    "explicacion": "La conjunción representa un “y” lógico. Para que p ∧ q sea verdadera deben cumplirse simultáneamente las dos partes. Si una sola falla, ya no es cierto que ocurran ambas a la vez.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 23,
+    "tema": "3- Lógica",
+    "pregunta": "¿A qué es equivalente la negación de una implicación ¬(p → q)?",
+    "opciones": [],
+    "respuesta": "p ∧ ¬q",
+    "pista": "Pensá qué cambia cuando se niega toda la proposición, no solo una parte.",
+    "explicacion": "En una implicación p → q se promete que si ocurre p, entonces ocurre q. El único caso que rompe esa promesa es que p sea verdadera y q falsa. Si p no ocurre, la implicación no queda contradicha.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 24,
+    "tema": "3- Lógica",
+    "pregunta": "¿Qué es una función proposicional?",
+    "opciones": [],
+    "respuesta": "Es una afirmación que contiene variables y se convierte en proposición al asignar valores a dichas variables.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una función proposicional todavía no tiene valor de verdad fijo porque contiene variables. Cuando se asignan valores del dominio a esas variables, se convierte en una proposición. Por ejemplo, “x es par” depende de qué valor tome x.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 25,
+    "tema": "3- Lógica",
+    "pregunta": "Concepto: Dominio de discurso",
+    "opciones": [],
+    "respuesta": "Es el conjunto de todos los valores posibles que pueden tomar las variables en una función proposicional.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "El dominio de discurso fija sobre qué objetos se está hablando. Sin ese conjunto, una función proposicional puede ser ambigua porque la variable no tiene rango claro. Los cuantificadores siempre se interpretan respecto de ese dominio.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 26,
+    "tema": "3- Lógica",
+    "pregunta": "¿Para qué se utiliza el cuantificador universal ∀?",
+    "opciones": [],
+    "respuesta": "Para indicar que una propiedad se cumple para todos los elementos del dominio.",
+    "pista": "Observá si la frase habla de todos los casos o de al menos uno.",
+    "explicacion": "El cuantificador universal afirma que una propiedad vale para todos los elementos del dominio. Basta encontrar un solo elemento que no la cumpla para que la afirmación sea falsa. Por eso se asocia con expresiones como “todo” o “para cada”.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 27,
+    "tema": "3- Lógica",
+    "pregunta": "¿Para qué se utiliza el cuantificador existencial ∃?",
+    "opciones": [],
+    "respuesta": "Para indicar que existe al menos un elemento en el dominio que cumple una propiedad.",
+    "pista": "Observá si la frase habla de todos los casos o de al menos uno.",
+    "explicacion": "El cuantificador existencial afirma que hay al menos un elemento del dominio con cierta propiedad. No exige que todos la cumplan. Para probarlo alcanza exhibir un ejemplo válido.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 28,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cómo se prueba que una afirmación cuantificada universalmente (∀x P(x)) es falsa?",
+    "opciones": [],
+    "respuesta": "Encontrando un contraejemplo (un valor en el dominio para el cual P(x) sea falso).",
+    "pista": "Observá si la frase habla de todos los casos o de al menos uno.",
+    "explicacion": "El cuantificador universal afirma que una propiedad vale para todos los elementos del dominio. Basta encontrar un solo elemento que no la cumpla para que la afirmación sea falsa. Por eso se asocia con expresiones como “todo” o “para cada”.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 29,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cómo se prueba que una afirmación cuantificada existencialmente (∃x P(x)) es verdadera?",
+    "opciones": [],
+    "respuesta": "Encontrando al menos un elemento en el dominio que cumpla la propiedad P(x).",
+    "pista": "Observá si la frase habla de todos los casos o de al menos uno.",
+    "explicacion": "El cuantificador existencial afirma que hay al menos un elemento del dominio con cierta propiedad. No exige que todos la cumplan. Para probarlo alcanza exhibir un ejemplo válido.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 30,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cuál es la negación de la proposición ∀x P(x)?",
+    "opciones": [],
+    "respuesta": "∃x ¬P(x)",
+    "pista": "Pensá qué cambia cuando se niega toda la proposición, no solo una parte.",
+    "explicacion": "En lógica, solo interesan los enunciados que pueden evaluarse con un valor de verdad. Una proposición debe poder ser verdadera o falsa, aunque no sepamos todavía cuál de las dos cosas ocurre. Por eso preguntas, órdenes o expresiones de deseo no entran en esta categoría.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 31,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cuál es la negación de la proposición ∃x P(x)?",
+    "opciones": [],
+    "respuesta": "∀x ¬P(x)",
+    "pista": "Pensá qué cambia cuando se niega toda la proposición, no solo una parte.",
+    "explicacion": "En lógica, solo interesan los enunciados que pueden evaluarse con un valor de verdad. Una proposición debe poder ser verdadera o falsa, aunque no sepamos todavía cuál de las dos cosas ocurre. Por eso preguntas, órdenes o expresiones de deseo no entran en esta categoría.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 32,
+    "tema": "3- Lógica",
+    "pregunta": "¿Bajo qué condición la doble implicación p ↔ q es verdadera?",
+    "opciones": [],
+    "respuesta": "Cuando ambas proposiciones (p y q) tienen el mismo valor de verdad.",
+    "pista": "Revisá el papel del antecedente y del consecuente.",
+    "explicacion": "En una implicación p → q se promete que si ocurre p, entonces ocurre q. El único caso que rompe esa promesa es que p sea verdadera y q falsa. Si p no ocurre, la implicación no queda contradicha.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 33,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cuál es el valor de verdad de la implicación si el antecedente es falso?",
+    "opciones": [],
+    "respuesta": "Siempre es verdadera, independientemente del valor del consecuente.",
+    "pista": "Revisá el papel del antecedente y del consecuente.",
+    "explicacion": "En una implicación p → q se promete que si ocurre p, entonces ocurre q. El único caso que rompe esa promesa es que p sea verdadera y q falsa. Si p no ocurre, la implicación no queda contradicha.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 34,
+    "tema": "3- Lógica",
+    "pregunta": "¿Por qué es útil la lógica en las ciencias de la computación?",
+    "opciones": [],
+    "respuesta": "Para argumentar y probar que un programa es correcto y hace lo que debe hacer.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La lógica permite expresar condiciones, razonar sobre programas y verificar si una instrucción cumple lo esperado. En computación, muchas decisiones se reducen a valores verdadero/falso. Por eso sirve para diseñar algoritmos y comprobar su corrección.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 35,
+    "tema": "3- Lógica",
+    "pregunta": "Si hoy es lunes (p) y está lloviendo (q), ¿cómo se expresa simbólicamente \"Hoy no es lunes y está lloviendo\"?",
+    "opciones": [],
+    "respuesta": "¬p ∧ q",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Si p representa “hoy es lunes”, entonces “hoy no es lunes” se escribe ¬p. Como la frase también afirma que está lloviendo, se une con q mediante una conjunción. La expresión completa queda ¬p ∧ q.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 36,
+    "tema": "3- Lógica",
+    "pregunta": "¿Qué valor de verdad tiene p ∨ q si p es falsa y q es verdadera?",
+    "opciones": [],
+    "respuesta": "Verdadera.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En una disyunción inclusiva alcanza con que una de las dos proposiciones sea verdadera. Si p es falsa pero q es verdadera, todavía se cumple “p o q”. Por eso el resultado es verdadero.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 37,
+    "tema": "3- Lógica",
+    "pregunta": "¿Qué valor de verdad tiene p ∧ q si p es falsa y q es verdadera?",
+    "opciones": [],
+    "respuesta": "Falsa.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En una conjunción deben cumplirse las dos proposiciones al mismo tiempo. Si p es falsa, ya no es cierto que p y q ocurran simultáneamente. Por eso el resultado es falso aunque q sea verdadera.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 38,
+    "tema": "3- Lógica",
+    "pregunta": "En el ejercicio del decreto de Naperville, si es ilegal tener más de 3 perros Y 3 gatos, ¿viola la ley alguien con 5 perros y 0 gatos?",
+    "opciones": [],
+    "respuesta": "No, porque la conjunción requiere que se cumplan ambas condiciones para ser ilegal.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "La palabra “y” indica una conjunción: deben cumplirse las dos condiciones a la vez. Tener más de 3 perros no alcanza si no se tienen también más de 3 gatos. Por eso 5 perros y 0 gatos no violan esa regla formulada con “y”.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 39,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cuál es la negación literal de \"Todos los enteros son positivos\"?",
+    "opciones": [],
+    "respuesta": "Existe al menos un entero que no es positivo.",
+    "pista": "Pensá qué cambia cuando se niega toda la proposición, no solo una parte.",
+    "explicacion": "Para negar una afirmación con “todos”, no se dice que todos fallan. Se afirma que existe al menos un caso que no cumple la propiedad. Por eso basta con un entero que no sea positivo.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 40,
+    "tema": "3- Lógica",
+    "pregunta": "¿Cómo se formula simbólicamente \"Si llueve, entonces hace calor o el árbol tiene hojas\"?",
+    "opciones": [],
+    "respuesta": "q → (r ∨ s)",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "La frase “si..., entonces...” se traduce como una implicación. El consecuente “hace calor o el árbol tiene hojas” es una disyunción, por eso se agrupa entre paréntesis. Así se conserva la estructura lógica de la oración.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 41,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Qué caracteriza a un sistema analógico en términos de sus variables?",
+    "opciones": [],
+    "respuesta": "Está compuesto por variables cuyos valores pertenecen al campo de los números reales y pueden ser infinitamente precisos.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Un sistema analógico puede tomar valores continuos dentro de un rango. Eso significa que entre dos valores siempre puede existir otro intermedio. Por eso se lo modela con magnitudes reales y no con niveles discretos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 42,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cuál es la principal diferencia entre una señal analógica y una digital respecto a los valores intermedios?",
+    "opciones": [],
+    "respuesta": "En la analógica siempre hay valores intermedios, mientras que en la digital hay saltos discretos sin nada entre niveles.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Una señal digital trabaja con niveles separados, como 0 y 1. Al no considerar infinitos valores intermedios, es más fácil representarla, almacenar datos y procesarlos con circuitos. Esa discretización es la base del procesamiento computacional.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 43,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Por qué las computadoras requieren señales digitales para procesar información?",
+    "opciones": [],
+    "respuesta": "Porque las computadoras solo pueden procesar un número finito de elementos.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una señal digital trabaja con niveles separados, como 0 y 1. Al no considerar infinitos valores intermedios, es más fácil representarla, almacenar datos y procesarlos con circuitos. Esa discretización es la base del procesamiento computacional.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 44,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Qué dispositivo se utiliza para transformar una señal de temperatura (analógica) en datos procesables por una computadora?",
+    "opciones": [],
+    "respuesta": "Un conversor analógico digital (ADC).",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Un conversor analógico digital transforma una magnitud continua en datos discretos. La temperatura puede variar de manera gradual, pero la computadora necesita valores codificados. El ADC realiza ese puente entre el mundo analógico y el procesamiento digital.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 45,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cuáles son los 10 elementos que componen el sistema decimal?",
+    "opciones": [],
+    "respuesta": "Los números del 0 al 9.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 46,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Qué dígitos se utilizan en el sistema binario?",
+    "opciones": [],
+    "respuesta": "El 0 y el 1.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "El sistema binario usa base 2, por eso solo necesita dos dígitos: 0 y 1. Cada posición representa una potencia de 2. Esta representación coincide bien con circuitos que tienen dos estados eléctricos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 47,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cuál es el rango de valores numéricos en el sistema octal?",
+    "opciones": [],
+    "respuesta": "Del 0 al 7.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El sistema octal es de base 8. Sus dígitos posibles van desde 0 hasta una unidad menos que la base, es decir, 7. No aparece el 8 como dígito porque al llegar a ese valor se cambia de posición.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 48,
+    "tema": "2- Sistema binario",
+    "pregunta": "En el sistema hexadecimal, ¿qué valor decimal representa la letra F?",
+    "opciones": [],
+    "respuesta": "Representa el número 15.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 49,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿A qué número decimal corresponden las letras A, B y C en hexadecimal?",
+    "opciones": [],
+    "respuesta": "A = 10, B = 11 y C = 12.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 50,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cómo se determina el peso de una posición en cualquier sistema numérico?",
+    "opciones": [],
+    "respuesta": "Elevando la base del sistema a la potencia de su posición (comenzando desde 0 a la derecha).",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En un sistema posicional, cada dígito vale según la posición que ocupa. Ese peso se calcula elevando la base a la posición correspondiente, empezando desde 0 a la derecha. Por eso el mismo dígito puede valer distinto según dónde esté.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 51,
+    "tema": "2- Sistema binario",
+    "pregunta": "En el número decimal 235, ¿cuál es la descomposición matemática del dígito 2?",
+    "opciones": [],
+    "respuesta": "2 × 10² (centenas).",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 52,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cuál es el primer paso para convertir un número binario a decimal?",
+    "opciones": [],
+    "respuesta": "Multiplicar cada bit por 2ⁿ, donde n es la posición del bit desde la derecha.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 53,
+    "tema": "2- Sistema binario",
+    "pregunta": "Si convertimos el binario 1101₂ a decimal, ¿qué operación realizamos con el bit de la izquierda?",
+    "opciones": [],
+    "respuesta": "1 × 2³ (que es igual a 8).",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 54,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Qué sucede con los valores de las potencias en una conversión de binario a decimal cuando el bit es 0?",
+    "opciones": [],
+    "respuesta": "El valor se cancela porque cualquier número multiplicado por 0 da como resultado 0.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 55,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cómo se convierte un número decimal a cualquier otra base (2, 8 o 16)?",
+    "opciones": [],
+    "respuesta": "Mediante divisiones sucesivas por la base hasta que el cociente sea menor que la base.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 56,
+    "tema": "2- Sistema binario",
+    "pregunta": "Al convertir de decimal a binario, ¿en qué orden se toman los restos de las divisiones para formar el número?",
+    "opciones": [],
+    "respuesta": "Se toman desde el último cociente hacia el primer resto (de derecha a izquierda o de abajo hacia arriba).",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 57,
+    "tema": "2- Sistema binario",
+    "pregunta": "Regla de suma binaria: ¿A qué es igual 1 + 1?",
+    "opciones": [],
+    "respuesta": "Es igual a 0 y genera un bit de acarreo (carry) de 1 hacia la izquierda.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En binario, la base es 2, así que no existe el dígito 2. Cuando se suma 1 + 1, se escribe 0 en esa columna y se acarrea 1 a la siguiente. Es el mismo principio que en decimal al pasar de 9.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 58,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Qué es el \"carry\" o bit de acarreo en una suma binaria?",
+    "opciones": [],
+    "respuesta": "Es el valor que se traslada a la columna siguiente cuando el resultado de la suma excede la base.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El acarreo aparece cuando la suma de una columna supera lo que puede representarse con un solo dígito de la base. En binario, cualquier resultado igual o mayor que 2 se traslada parcialmente a la columna siguiente. Esto mantiene correcta la notación posicional.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 59,
+    "tema": "2- Sistema binario",
+    "pregunta": "En una suma binaria de una columna con tres unos (1 + 1 + 1), ¿cuál es el resultado?",
+    "opciones": [],
+    "respuesta": "El resultado es 1 y se genera un acarreo de 1.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En binario, la base es 2, así que no existe el dígito 2. Cuando se suma 1 + 1, se escribe 0 en esa columna y se acarrea 1 a la siguiente. Es el mismo principio que en decimal al pasar de 9.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 60,
+    "tema": "2- Sistema binario",
+    "pregunta": "Regla de resta binaria: ¿A qué es igual 0 - 1?",
+    "opciones": [],
+    "respuesta": "Es igual a 1 pidiendo una unidad prestada a la posición de la izquierda.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "No se puede restar 1 de 0 dentro de una columna binaria sin pedir prestado. Al tomar una unidad de la posición izquierda, esa unidad equivale a 2 en la columna actual. Entonces 2 - 1 deja 1.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 61,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cómo se puede verificar si el resultado de una resta binaria es correcto?",
+    "opciones": [],
+    "respuesta": "Sumando el resultado obtenido con el sustraendo; el total debe ser igual al minuendo.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La resta se comprueba usando la operación inversa. Si al resultado se le suma el sustraendo y se recupera el minuendo, entonces la resta fue consistente. Esta verificación vale igual que en el sistema decimal.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 62,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cuál es el elemento neutro en la multiplicación de números binarios?",
+    "opciones": [],
+    "respuesta": "El número 1, ya que cualquier número multiplicado por 1 da el mismo número.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "El sistema binario usa base 2, por eso solo necesita dos dígitos: 0 y 1. Cada posición representa una potencia de 2. Esta representación coincide bien con circuitos que tienen dos estados eléctricos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 63,
+    "tema": "2- Sistema binario",
+    "pregunta": "Al multiplicar binarios, ¿qué se debe hacer al pasar al siguiente bit del multiplicador?",
+    "opciones": [],
+    "respuesta": "Desplazar el resultado parcial un lugar hacia la izquierda, igual que en el sistema decimal.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "El sistema binario usa base 2, por eso solo necesita dos dígitos: 0 y 1. Cada posición representa una potencia de 2. Esta representación coincide bien con circuitos que tienen dos estados eléctricos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 64,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Qué operaciones básicas se repasan al realizar una división de números binarios?",
+    "opciones": [],
+    "respuesta": "Se repasan la multiplicación y la resta.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "El sistema binario usa base 2, por eso solo necesita dos dígitos: 0 y 1. Cada posición representa una potencia de 2. Esta representación coincide bien con circuitos que tienen dos estados eléctricos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 65,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cuántos bits se deben agrupar para pasar de binario directamente a octal?",
+    "opciones": [],
+    "respuesta": "Se deben tomar ternas (grupos de 3 bits) de derecha a izquierda.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "El sistema binario usa base 2, por eso solo necesita dos dígitos: 0 y 1. Cada posición representa una potencia de 2. Esta representación coincide bien con circuitos que tienen dos estados eléctricos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 66,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Por qué se utilizan grupos de 4 bits para convertir de binario a hexadecimal?",
+    "opciones": [],
+    "respuesta": "Porque 2⁴ = 16, lo que permite obtener las 16 combinaciones diferentes del sistema hexadecimal.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 67,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cómo se obtiene el Complemento a 1 (CA1) de un número binario?",
+    "opciones": [],
+    "respuesta": "Negando cada uno de sus bits (cambiando ceros por unos y unos por ceros).",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "El sistema binario usa base 2, por eso solo necesita dos dígitos: 0 y 1. Cada posición representa una potencia de 2. Esta representación coincide bien con circuitos que tienen dos estados eléctricos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 68,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cuál es la fórmula para hallar el Complemento a 2 (CA2) a partir del Complemento a 1?",
+    "opciones": [],
+    "respuesta": "CA2 = CA1 + 1.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El complemento a 1 invierte todos los bits del número. Esta operación cambia cada 0 por 1 y cada 1 por 0. Sirve como paso previo para obtener el complemento a 2.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 69,
+    "tema": "2- Sistema binario",
+    "pregunta": "En la representación de números binarios con signo, ¿qué indica un bit de signo 0?",
+    "opciones": [],
+    "respuesta": "Indica que el número es positivo.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "El sistema binario usa base 2, por eso solo necesita dos dígitos: 0 y 1. Cada posición representa una potencia de 2. Esta representación coincide bien con circuitos que tienen dos estados eléctricos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 70,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Qué función cumple el bit 1 en la posición más significativa en un sistema de números con signo?",
+    "opciones": [],
+    "respuesta": "Indica que el número es negativo.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El bit más significativo funciona como indicador de signo. Cuando vale 1, el patrón se interpreta como negativo en representaciones con signo. Esto no significa que los otros bits no importen, sino que el signo cambia la lectura del conjunto.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 71,
+    "tema": "2- Sistema binario",
+    "pregunta": "Para restar mediante el complemento a la base, ¿qué requisito deben cumplir el minuendo y el sustraendo?",
+    "opciones": [],
+    "respuesta": "Deben poseer la misma cantidad de bits, agregando ceros a la izquierda del sustraendo si es necesario.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "En una resta con complemento, las posiciones de ambos números deben representar los mismos pesos. Si uno tiene menos bits, se agregan ceros a la izquierda porque eso no cambia su valor. Así el complemento y la suma posterior se aplican sobre palabras del mismo tamaño.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 72,
+    "tema": "2- Sistema binario",
+    "pregunta": "Al realizar una resta binaria usando CA2, ¿qué se hace con el bit de acarreo que sobra al final (el noveno bit en una palabra de 8)?",
+    "opciones": [],
+    "respuesta": "El bit excedente se descarta para obtener el resultado final.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El acarreo aparece cuando la suma de una columna supera lo que puede representarse con un solo dígito de la base. En binario, cualquier resultado igual o mayor que 2 se traslada parcialmente a la columna siguiente. Esto mantiene correcta la notación posicional.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 73,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cuál es el primer paso del algoritmo para cambiar el signo de un número decimal a binario negativo?",
+    "opciones": [],
+    "respuesta": "Definir el tamaño de palabra (por ejemplo, 8 bits) y convertir el valor absoluto a binario.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 74,
+    "tema": "2- Sistema binario",
+    "pregunta": "Si un número binario tiene 7 bits y el tamaño de palabra es de 8 bits, ¿qué bit se agrega para representar que es positivo?",
+    "opciones": [],
+    "respuesta": "Se agrega un 0 en la octava posición (la más significativa).",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "El sistema binario usa base 2, por eso solo necesita dos dígitos: 0 y 1. Cada posición representa una potencia de 2. Esta representación coincide bien con circuitos que tienen dos estados eléctricos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 75,
+    "tema": "2- Sistema binario",
+    "pregunta": "Ejercicio: Exprese el decimal 25₁₀ en base 2.",
+    "opciones": [],
+    "respuesta": "11001₂.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 76,
+    "tema": "2- Sistema binario",
+    "pregunta": "Ejercicio: Obtenga la representación decimal de 11111₂.",
+    "opciones": [],
+    "respuesta": "31₁₀.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 77,
+    "tema": "2- Sistema binario",
+    "pregunta": "Ejercicio: Realice la multiplicación 11101₂ × 10₂.",
+    "opciones": [],
+    "respuesta": "111010₂.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Para pasar de binario a decimal se multiplica cada bit por la potencia de 2 correspondiente. Los bits de la izquierda tienen mayor peso porque ocupan posiciones más altas. En 1101₂, el primer 1 vale 2³.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 78,
+    "tema": "2- Sistema binario",
+    "pregunta": "En la resta de grandes cantidades de bits, ¿cuál es la sugerencia para simplificar la operación?",
+    "opciones": [],
+    "respuesta": "Agrupar los dígitos (por ejemplo de 4 en 4) de derecha a izquierda y resolver por porciones.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Agrupar bits reduce la posibilidad de perder préstamos o posiciones en restas largas. Al trabajar por bloques, por ejemplo de cuatro bits, se mantiene mejor el orden de derecha a izquierda. La operación no cambia; solo se organiza para hacerla más controlable.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 79,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Cuál es el valor decimal de la base octal elevada a la potencia 2 (8²)?",
+    "opciones": [],
+    "respuesta": "64.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 80,
+    "tema": "2- Sistema binario",
+    "pregunta": "¿Qué valor decimal tiene la posición de las unidades en cualquier base?",
+    "opciones": [],
+    "respuesta": "Tiene un valor de 1, porque cualquier base elevada a la 0 es 1.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "La base decimal usa diez símbolos porque cada posición puede tomar valores del 0 al 9. Cuando se supera el 9, se pasa a la siguiente posición mediante el acarreo. Esa misma idea se generaliza a otras bases.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 81,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cuál es el objetivo principal de la lógica en el contexto de la programación de computadoras?",
+    "opciones": [],
+    "respuesta": "Analizar enunciados para desarrollar programas y comprender el funcionamiento lógico de la computadora.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La lógica permite traducir razonamientos a condiciones que una computadora puede evaluar. En programación, decisiones como “si ocurre esto, entonces hacer aquello” dependen de valores verdadero/falso. Por eso ayuda tanto a escribir algoritmos como a entender cómo opera internamente la máquina.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 82,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué matemático y lógico inglés sentó las bases del sistema algebraico para el razonamiento lógico en el siglo XIX?",
+    "opciones": [],
+    "respuesta": "George Boole.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "George Boole fue quien propuso tratar el razonamiento lógico con símbolos y operaciones algebraicas. Esa idea permitió pasar de argumentos verbales a reglas formales. Por eso su nombre queda asociado al álgebra booleana.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 83,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿En qué año y por quién se aplicó la lógica booleana a los circuitos eléctricos por primera vez?",
+    "opciones": [],
+    "respuesta": "En 1938, por Claude Shannon.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Claude Shannon conectó la lógica booleana con circuitos eléctricos al interpretar estados de interruptores como 0 y 1. Esa relación mostró que un circuito podía implementar operaciones lógicas. Por eso 1938 marca un paso clave entre lógica matemática y electrónica digital.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 84,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En la jerarquía de niveles de una computadora, ¿a qué niveles corresponden la lógica digital y la microarquitectura respectivamente?",
+    "opciones": [],
+    "respuesta": "Nivel 0 y Nivel 1.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La lógica digital se ubica en la base porque describe compuertas y señales binarias. La microarquitectura organiza esos componentes para ejecutar instrucciones. Por eso se las piensa como niveles consecutivos dentro de la computadora.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 85,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué es una señal en el ámbito de la lógica digital?",
+    "opciones": [],
+    "respuesta": "Es una variación de voltaje que transmite información mediante valores discretos (generalmente 0 y 1).",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "En lógica digital, una señal representa información mediante niveles discretos de voltaje. Esos niveles se interpretan como 0 o 1. Esta simplificación permite construir circuitos lógicos confiables.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 86,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "El conjunto de elementos utilizado en el álgebra de Boole se define como S = { ... }.",
+    "opciones": [],
+    "respuesta": "{0,1}",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "El álgebra de Boole trabaja con dos valores posibles. Esos valores suelen interpretarse como falso/verdadero o 0/1. Todas las operaciones deben producir nuevamente uno de esos valores.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 87,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cuáles son las dos operaciones binarias fundamentales y la operación unaria del álgebra de Boole?",
+    "opciones": [],
+    "respuesta": "Suma lógica (+), multiplicación lógica (·) y complemento.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Las operaciones básicas del álgebra booleana son OR, AND y NOT. OR combina alternativas, AND exige simultaneidad y el complemento invierte el valor. Con ellas se pueden construir expresiones y circuitos más complejos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 88,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿En qué consiste la propiedad de clausura en el álgebra de Boole?",
+    "opciones": [],
+    "respuesta": "Para cualquier A y B ∈ S, los resultados de A + B y A · B también pertenecen a S.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La clausura significa que al operar elementos del conjunto no se sale de ese conjunto. En Boole, operar 0 y 1 con suma o producto lógico siempre devuelve 0 o 1. Eso permite que el sistema sea cerrado y consistente.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 89,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué diferencia existe entre una variable booleana y un literal?",
+    "opciones": [],
+    "respuesta": "La variable es el símbolo (A), mientras que el literal es la variable en forma directa (A) o negada (A').",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La variable es el nombre lógico, como A. Un literal es una aparición concreta de esa variable, ya sea directa o negada. Esta distinción sirve al simplificar expresiones booleanas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 90,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cómo se define una expresión booleana?",
+    "opciones": [],
+    "respuesta": "Es la combinación de dos o más variables mediante operadores booleanos.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Una expresión booleana combina variables mediante operadores lógicos. Su resultado siempre es 0 o 1 según los valores de entrada. Por eso puede representarse con tabla de verdad o circuito.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 91,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En la suma lógica (OR), ¿cuál es el resultado de 1 + 1?",
+    "opciones": [],
+    "respuesta": "1.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La suma lógica representa OR, no suma decimal común. En OR, el resultado es 1 si al menos una entrada vale 1. Por eso 1 + 1 sigue dando 1 y no 2.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 92,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En la multiplicación lógica (AND), ¿cuál es la única combinación de entradas que produce un 1 de salida?",
+    "opciones": [],
+    "respuesta": "Cuando ambas entradas son 1 (1 · 1 = 1).",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "El producto lógico representa AND. Solo produce 1 cuando todas las entradas valen 1. Si alguna entrada es 0, la condición conjunta no se cumple.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 93,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Mencione tres formas simbólicas de representar el complemento de la variable A.",
+    "opciones": [],
+    "respuesta": "A', Ā y ¬A.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "El complemento expresa la negación de una variable. Si A vale 1, su complemento vale 0, y viceversa. Las distintas notaciones representan la misma idea lógica.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 94,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Según la propiedad conmutativa, ¿a qué es igual A · B?",
+    "opciones": [],
+    "respuesta": "B · A.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La propiedad conmutativa dice que el orden de los operandos no cambia el resultado. En AND, exigir A y B es equivalente a exigir B y A. Por eso A · B y B · A tienen la misma tabla de verdad.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 95,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Enuncie la ley asociativa para la suma lógica de tres variables A, B y C.",
+    "opciones": [],
+    "respuesta": "(A + B) + C = A + (B + C)",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La suma lógica representa OR, no suma decimal común. En OR, el resultado es 1 si al menos una entrada vale 1. Por eso 1 + 1 sigue dando 1 y no 2.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 96,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Propiedad distributiva especial: A + (B · C) = ...",
+    "opciones": [],
+    "respuesta": "(A + B) · (A + C)",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "En álgebra booleana, la suma distribuye sobre el producto de una manera propia del sistema lógico. La igualdad se verifica por tabla de verdad o usando leyes booleanas. No debe confundirse con la aritmética decimal común.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 97,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Por qué la ley distributiva de la suma sobre el producto no es aplicable en el álgebra decimal convencional?",
+    "opciones": [],
+    "respuesta": "Porque 4 + (3 · 2) = 10, mientras que (4 + 3) · (4 + 2) = 42.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En álgebra booleana, la suma distribuye sobre el producto de una manera propia del sistema lógico. La igualdad se verifica por tabla de verdad o usando leyes booleanas. No debe confundirse con la aritmética decimal común.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 98,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cuáles son los elementos identidad para la suma y el producto booleano?",
+    "opciones": [],
+    "respuesta": "0 para la suma y 1 para el producto.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "El elemento identidad no cambia el valor de la variable al operar. En OR, sumar 0 deja A igual; en AND, multiplicar por 1 deja A igual. Por eso 0 y 1 cumplen roles distintos según la operación.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 99,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Según las leyes de anulación, ¿cuáles son los resultados de A + 1 y A · 0?",
+    "opciones": [],
+    "respuesta": "1 y 0 respectivamente.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Las leyes de anulación muestran valores dominantes. En OR, si aparece 1, el resultado ya es 1; en AND, si aparece 0, el resultado ya es 0. Esto permite simplificar circuitos y expresiones.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 100,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Propiedad del elemento complementario: ¿A qué equivalen A + Ā y A · Ā?",
+    "opciones": [],
+    "respuesta": "1 y 0 respectivamente.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una variable y su complemento cubren los dos casos posibles. A + Ā vale 1 porque siempre una de las dos es verdadera; A · Ā vale 0 porque no pueden ser verdaderas simultáneamente. Esa oposición es central en Boole.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 101,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué establecen las leyes de idempotencia para cualquier variable A?",
+    "opciones": [],
+    "respuesta": "A + A = A y A · A = A.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La idempotencia indica que repetir una variable no agrega información. A OR A sigue siendo A, y A AND A también. Por eso las repeticiones se eliminan al simplificar.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 102,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Ley de absorción básica: A + (A · B) = ...",
+    "opciones": [],
+    "respuesta": "A.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "La absorción elimina términos redundantes. Si A ya está presente, agregar A · B no cambia el resultado porque ese término solo puede ser verdadero cuando A también lo es. Por eso la expresión se reduce.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 103,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Ley de absorción con negación: A + (Ā · B) = ...",
+    "opciones": [],
+    "respuesta": "A + B.",
+    "pista": "Pensá qué cambia cuando se niega toda la proposición, no solo una parte.",
+    "explicacion": "La absorción elimina términos redundantes. Si A ya está presente, agregar A · B no cambia el resultado porque ese término solo puede ser verdadero cuando A también lo es. Por eso la expresión se reduce.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 104,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Ley de absorción (variante de producto): A · (Ā + B) = ...",
+    "opciones": [],
+    "respuesta": "A · B.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "La absorción elimina términos redundantes. Si A ya está presente, agregar A · B no cambia el resultado porque ese término solo puede ser verdadero cuando A también lo es. Por eso la expresión se reduce.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 105,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Demuestre la simplificación de A + (A · B) usando otras leyes booleanas.",
+    "opciones": [],
+    "respuesta": "A · (1 + B) = A · 1 = A.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "El producto lógico representa AND. Solo produce 1 cuando todas las entradas valen 1. Si alguna entrada es 0, la condición conjunta no se cumple.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 106,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué establece la ley de involución sobre la doble negación de una variable?",
+    "opciones": [],
+    "respuesta": "Que la doble negación devuelve el valor original: Ā̄ = A.",
+    "pista": "Pensá qué cambia cuando se niega toda la proposición, no solo una parte.",
+    "explicacion": "La involución dice que negar dos veces devuelve el valor original. Primero se cambia A por su opuesto, y luego se vuelve a cambiar. Por eso la doble negación se simplifica a A.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 107,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Primera Ley de De Morgan: ¯(A + B) = ...",
+    "opciones": [],
+    "respuesta": "Ā · B̄.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Las leyes de De Morgan explican cómo se distribuye una negación sobre AND y OR. Al negar una suma lógica se obtiene un producto de negaciones, y al negar un producto se obtiene una suma de negaciones. Son clave para transformar circuitos equivalentes.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 108,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Segunda Ley de De Morgan: ¯(A · B) = ...",
+    "opciones": [],
+    "respuesta": "Ā + B̄.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Las leyes de De Morgan explican cómo se distribuye una negación sobre AND y OR. Al negar una suma lógica se obtiene un producto de negaciones, y al negar un producto se obtiene una suma de negaciones. Son clave para transformar circuitos equivalentes.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 109,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cómo se representa una variable A = 0 en un circuito eléctrico de interruptores?",
+    "opciones": [],
+    "respuesta": "Como un interruptor abierto que no permite el paso de corriente.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En el modelo de interruptores, el valor 0 se asocia con ausencia de conducción. Un interruptor abierto corta el paso de corriente, así que representa una condición falsa o desactivada. El valor 1, en cambio, se asocia con el interruptor cerrado.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 110,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿A qué operación lógica equivale un circuito con interruptores montados en serie?",
+    "opciones": [],
+    "respuesta": "A la conjunción o multiplicación lógica (AND).",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Interruptores en serie exigen que todos estén cerrados para que circule corriente. Esa condición coincide con AND: todas las variables deben valer 1. Si una falla, el circuito se corta.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 111,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿A qué operación lógica equivale un circuito con interruptores montados en paralelo?",
+    "opciones": [],
+    "respuesta": "A la disyunción o suma lógica (OR).",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Interruptores en paralelo permiten corriente si al menos una rama está cerrada. Eso coincide con OR: basta una entrada verdadera. Por eso el circuito paralelo representa suma lógica.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 112,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Si una variable se define como B', ¿qué significa respecto al comportamiento físico de su interruptor?",
+    "opciones": [],
+    "respuesta": "Que el interruptor se cierra cuando el valor de B es 0.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una variable negada representa el comportamiento opuesto al de la variable directa. En interruptores, se interpreta como conducción cuando la variable original no está activa. Esa inversión modela el complemento lógico.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 113,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cuál es la función del transistor dentro de un chip de computadora?",
+    "opciones": [],
+    "respuesta": "Actuar como un interruptor electrónico que permite o impide el flujo de corriente mediante una señal.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Los transistores permiten implementar físicamente valores lógicos mediante conducción o corte. Combinados, forman compuertas que realizan AND, OR y NOT. Por eso son la base material de la lógica digital.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 114,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cuáles son los tres terminales principales de un transistor mencionados en el material?",
+    "opciones": [],
+    "respuesta": "Colector, Emisor y Base.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Los transistores permiten implementar físicamente valores lógicos mediante conducción o corte. Combinados, forman compuertas que realizan AND, OR y NOT. Por eso son la base material de la lógica digital.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 115,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En un transistor, ¿qué terminal regula la apertura o cierre del flujo de corriente?",
+    "opciones": [],
+    "respuesta": "La Base.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Los transistores permiten implementar físicamente valores lógicos mediante conducción o corte. Combinados, forman compuertas que realizan AND, OR y NOT. Por eso son la base material de la lógica digital.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 116,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cómo se conectan los transistores para formar una compuerta AND?",
+    "opciones": [],
+    "respuesta": "En serie.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El producto lógico representa AND. Solo produce 1 cuando todas las entradas valen 1. Si alguna entrada es 0, la condición conjunta no se cumple.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 117,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cómo se conectan los transistores para formar una compuerta OR?",
+    "opciones": [],
+    "respuesta": "En paralelo.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Los transistores permiten implementar físicamente valores lógicos mediante conducción o corte. Combinados, forman compuertas que realizan AND, OR y NOT. Por eso son la base material de la lógica digital.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 118,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En una compuerta NOT (inversor), ¿qué sucede con la salida si la señal de entrada es 1?",
+    "opciones": [],
+    "respuesta": "La salida es 0 (la corriente se descarga a tierra).",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En lógica digital, una señal representa información mediante niveles discretos de voltaje. Esos niveles se interpretan como 0 o 1. Esta simplificación permite construir circuitos lógicos confiables.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 119,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cuál es la característica principal de la tabla de verdad de una compuerta XOR (OR exclusivo)?",
+    "opciones": [],
+    "respuesta": "La salida es 1 solamente si una sola de las entradas es 1.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La compuerta XOR representa una alternativa exclusiva. Su salida vale 1 cuando las entradas son distintas, porque solo una condición está activa. Si ambas entradas son iguales, no hay exclusividad y la salida vale 0.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 120,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Definición: Compuerta NAND",
+    "opciones": [],
+    "respuesta": "Es una compuerta AND con la salida negada (Inversa de la multiplicación lógica).",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "El producto lógico representa AND. Solo produce 1 cuando todas las entradas valen 1. Si alguna entrada es 0, la condición conjunta no se cumple.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 121,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué indica el pequeño círculo al final del símbolo de una compuerta lógica (como en NAND o NOR)?",
+    "opciones": [],
+    "respuesta": "Indica que la salida de la operación está negada.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "El producto lógico representa AND. Solo produce 1 cuando todas las entradas valen 1. Si alguna entrada es 0, la condición conjunta no se cumple.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 122,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Bajo qué condición la salida de una compuerta NOR es igual a 1?",
+    "opciones": [],
+    "respuesta": "Únicamente cuando todas sus entradas son 0.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "NOR es la negación de OR. OR vale 1 si al menos una entrada es 1, entonces NOR solo puede valer 1 cuando OR vale 0. Eso ocurre únicamente si todas las entradas están en 0.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 123,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cuál es la utilidad práctica de simplificar expresiones booleanas antes de construir un circuito?",
+    "opciones": [],
+    "respuesta": "Permite diseñar circuitos electrónicos más eficientes y económicos con menos componentes.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Simplificar expresiones booleanas elimina términos redundantes sin cambiar la función lógica. Al llevar eso a un circuito, se necesitan menos compuertas y conexiones. Por eso el diseño final puede ser más barato, rápido y fácil de construir.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 124,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué herramienta gráfica se utiliza comúnmente para simplificar funciones booleanas de manera ordenada?",
+    "opciones": [],
+    "respuesta": "Mapas de Karnaugh.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Los mapas de Karnaugh ordenan combinaciones booleanas para detectar agrupamientos. Esos grupos permiten encontrar expresiones equivalentes más simples. Son útiles porque hacen visual una simplificación que por álgebra puede ser más larga.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 125,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Concepto: Tabla de Verdad",
+    "opciones": [],
+    "respuesta": "Representación que muestra los resultados de una operación booleana para todas las combinaciones posibles de entrada.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Una tabla de verdad enumera todas las combinaciones posibles de entrada. Para cada combinación muestra la salida correspondiente de la operación o circuito. Así se puede verificar exactamente el comportamiento lógico completo.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 126,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En un diagrama de compuertas, ¿qué representa un punto en la intersección de dos líneas de conexión?",
+    "opciones": [],
+    "respuesta": "Indica que los cables están conectados eléctricamente en ese punto.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En diagramas de compuertas, las líneas representan conexiones eléctricas. Un punto en una intersección indica unión real entre cables; si no hay punto, normalmente se interpreta como cruce sin conexión. Esa convención evita confundir el circuito.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 127,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Si tenemos la expresión Z = (A + B) · (C + D), ¿qué tipo de configuración de circuito representa?",
+    "opciones": [],
+    "respuesta": "Dos grupos en paralelo (A, B y C, D) conectados entre sí en serie.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En la expresión Z = (A + B) · (C + D), cada suma lógica representa ramas en paralelo. Luego el producto entre ambos grupos indica una conexión en serie entre esos bloques. Por eso se interpreta como dos grupos paralelos conectados entre sí en serie.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 128,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué aplicación tiene el álgebra de Boole en la automatización industrial?",
+    "opciones": [],
+    "respuesta": "Diseñar sistemas de control digital para maquinaria, como el control de un lavarropas.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "El álgebra de Boole sirve para diseñar reglas de control con condiciones verdadero/falso. En automatización industrial, sensores, estados y órdenes pueden modelarse como variables lógicas. Así se construyen sistemas que activan maquinaria según combinaciones de condiciones.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 129,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En el contexto de microarquitectura, ¿qué componentes conforman procesadores y memorias a partir de la lógica digital?",
+    "opciones": [],
+    "respuesta": "Conjuntos de compuertas lógicas formadas por transistores.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La lógica digital se ubica en la base porque describe compuertas y señales binarias. La microarquitectura organiza esos componentes para ejecutar instrucciones. Por eso se las piensa como niveles consecutivos dentro de la computadora.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 130,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Según las Leyes de De Morgan, un circuito de sumas negadas puede convertirse en un circuito de \\_.",
+    "opciones": [],
+    "respuesta": "Productos de variables negadas.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Las leyes de De Morgan explican cómo se distribuye una negación sobre AND y OR. Al negar una suma lógica se obtiene un producto de negaciones, y al negar un producto se obtiene una suma de negaciones. Son clave para transformar circuitos equivalentes.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 131,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En la tabla de verdad de la compuerta AND, ¿cuál es el resultado si las entradas son (A=0, B=1)?",
+    "opciones": [],
+    "respuesta": "0.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El producto lógico representa AND. Solo produce 1 cuando todas las entradas valen 1. Si alguna entrada es 0, la condición conjunta no se cumple.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 132,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En la tabla de verdad de la compuerta OR, ¿cuál es el resultado si las entradas son (A=1, B=0)?",
+    "opciones": [],
+    "respuesta": "1.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La compuerta OR vale 1 cuando al menos una entrada está activa. Si A = 1 y B = 0, ya se cumple la condición de tener una entrada verdadera. Por eso la salida es 1.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 133,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cómo se denomina al estado de una variable booleana cuando representa \"Falso\"?",
+    "opciones": [],
+    "respuesta": "0 (o ausencia de paso de corriente).",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La variable es el nombre lógico, como A. Un literal es una aparición concreta de esa variable, ya sea directa o negada. Esta distinción sirve al simplificar expresiones booleanas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 134,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cómo se denomina al estado de una variable booleana cuando representa \"Verdadero\"?",
+    "opciones": [],
+    "respuesta": "1 (o tensión alta / paso de corriente).",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La variable es el nombre lógico, como A. Un literal es una aparición concreta de esa variable, ya sea directa o negada. Esta distinción sirve al simplificar expresiones booleanas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 135,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "El principio de que el pensamiento lógico podía expresarse mediante símbolos y reglas similares al álgebra fue propuesto por \\_.",
+    "opciones": [],
+    "respuesta": "George Boole.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "La idea de expresar el pensamiento lógico con símbolos y reglas algebraicas corresponde a George Boole. Su aporte fue convertir relaciones lógicas en un sistema manipulable formalmente. Esa formalización es la base del álgebra booleana.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 136,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Si un circuito tiene dos entradas A y B y su salida es siempre 0 excepto cuando A=1 y B=1, ¿qué compuerta lo representa?",
+    "opciones": [],
+    "respuesta": "Compuerta AND.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El producto lógico representa AND. Solo produce 1 cuando todas las entradas valen 1. Si alguna entrada es 0, la condición conjunta no se cumple.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 137,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué ocurre con la salida de una compuerta XOR si ambas entradas son 1?",
+    "opciones": [],
+    "respuesta": "La salida es 0.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "XOR significa OR exclusivo: la salida vale 1 solo si exactamente una entrada vale 1. Cuando ambas entradas son 1, no se cumple la exclusividad porque están activas las dos. Por eso la salida baja a 0.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 138,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Simplifique la siguiente expresión usando absorción: A · (A + B).",
+    "opciones": [],
+    "respuesta": "A.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "El producto lógico representa AND. Solo produce 1 cuando todas las entradas valen 1. Si alguna entrada es 0, la condición conjunta no se cumple.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 139,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Según De Morgan, la expresión Ā + B̄ es equivalente a \\_.",
+    "opciones": [],
+    "respuesta": "¯(A · B).",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Las leyes de De Morgan explican cómo se distribuye una negación sobre AND y OR. Al negar una suma lógica se obtiene un producto de negaciones, y al negar un producto se obtiene una suma de negaciones. Son clave para transformar circuitos equivalentes.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 140,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué nombre recibe el nivel 2 en la jerarquía de la computadora pensada en niveles?",
+    "opciones": [],
+    "respuesta": "Arquitectura del conjunto de instrucciones.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La arquitectura del conjunto de instrucciones describe las instrucciones visibles para el programador o el compilador. Está por encima de la microarquitectura, que explica cómo se implementan físicamente esas instrucciones. Por eso se la identifica como un nivel intermedio de abstracción.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 141,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En la jerarquía de niveles, ¿qué nivel se encarga de la traducción mediante un compilador?",
+    "opciones": [],
+    "respuesta": "Nivel 5 (Lenguaje orientado hacia los problemas).",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Un compilador traduce programas escritos en lenguajes orientados a problemas hacia niveles más cercanos a la máquina. Por eso se asocia con el nivel donde aparecen lenguajes de alto nivel. La traducción permite que una formulación más humana llegue a instrucciones ejecutables.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 142,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Si una señal es analógica, ¿cómo se diferencia de una señal digital?",
+    "opciones": [],
+    "respuesta": "La analógica varía de forma continua, mientras que la digital usa valores discretos (0 y 1).",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "En lógica digital, una señal representa información mediante niveles discretos de voltaje. Esos niveles se interpretan como 0 o 1. Esta simplificación permite construir circuitos lógicos confiables.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 143,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Cuál es el resultado de (Ā + Ā) por la ley de idempotencia?",
+    "opciones": [],
+    "respuesta": "Ā.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La idempotencia indica que repetir una variable no agrega información. A OR A sigue siendo A, y A AND A también. Por eso las repeticiones se eliminan al simplificar.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 144,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Identifique la ley: (A · B) · C = A · (B · C).",
+    "opciones": [],
+    "respuesta": "Ley Asociativa del producto.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "La igualdad muestra que se cambia la agrupación del producto lógico, pero no el orden de las variables. Esa es precisamente la propiedad asociativa. En AND, agrupar primero A·B o primero B·C produce la misma tabla de verdad.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 145,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "¿Qué valor booleano se asocia tradicionalmente con un interruptor cerrado?",
+    "opciones": [],
+    "respuesta": "1.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "Un interruptor cerrado permite el paso de corriente. En la analogía booleana, conducir se interpreta como estado activo o verdadero. Por eso se lo asocia tradicionalmente con el valor 1.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 146,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Cómo se define intuitivamente un conjunto según el material?",
+    "opciones": [],
+    "respuesta": "Como una colección de objetos bien diferenciados de nuestra intuición o nuestra mente.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 147,
+    "tema": "4 - Conjuntos",
+    "pregunta": "En un sistema de información, ¿por qué es útil organizar productos y clientes como conjuntos?",
+    "opciones": [],
+    "respuesta": "Permite gestionar datos de manera ordenada, evitando duplicados y facilitando operaciones rápidas.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 148,
+    "tema": "4 - Conjuntos",
+    "pregunta": "En la analogía con bases de datos, ¿con qué estructura se asocian los conjuntos?",
+    "opciones": [],
+    "respuesta": "Se asocian con las tablas de datos, donde cada registro es un elemento del conjunto.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 149,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Qué comando SQL se utiliza para realizar una operación similar a la intersección de conjuntos?",
+    "opciones": [],
+    "respuesta": "Se utiliza el comando `INTERSECT`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 150,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Si un elemento a pertenece al conjunto A, ¿cómo se representa simbólicamente?",
+    "opciones": [],
+    "respuesta": "Se escribe `a ∈ A`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 151,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Qué significa definir un conjunto por comprensión?",
+    "opciones": [],
+    "respuesta": "Consiste en enunciar una propiedad común que deben cumplir todos sus elementos.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 152,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Asocie los siguientes símbolos con sus conjuntos numéricos: N, Z, Q, I, R.",
+    "opciones": [],
+    "respuesta": "N (Naturales), Z (Enteros), Q (Racionales), I (Irracionales), R (Reales).",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 153,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Cómo se denomina al conjunto que carece de elementos y cuáles son sus símbolos?",
+    "opciones": [],
+    "respuesta": "Se denomina conjunto vacío y se denota con `∅` o `{ }`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 154,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Defina la relación de inclusión A ⊆ B.",
+    "opciones": [],
+    "respuesta": "Se verifica si cada elemento de A es también un elemento de B.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "La inclusión compara conjuntos: A está incluido en B si todo elemento de A también aparece en B. No exige que B tenga solo esos elementos. Por eso A puede ser igual a B o estar contenido dentro de B.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 155,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Qué condición diferencia a un subconjunto propio (A ⊂ B) de una inclusión general?",
+    "opciones": [],
+    "respuesta": "En el subconjunto propio, B debe tener al menos un elemento que no pertenezca a A.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 156,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Qué es el Conjunto Universal (U)?",
+    "opciones": [],
+    "respuesta": "Es el conjunto de todos los objetos sobre los que se está tratando en un contexto dado.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 157,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Defina la operación de Unión (A ∪ B) por comprensión.",
+    "opciones": [],
+    "respuesta": "`A ∪ B = {x / x ∈ A o x ∈ B}`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Definir por comprensión significa describir la propiedad que cumplen los elementos. En lugar de listar cada uno, se indica una condición común. Esto es útil cuando el conjunto es grande o cuando interesa la regla que lo caracteriza.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 158,
+    "tema": "4 - Conjuntos",
+    "pregunta": "En programación (Python), ¿qué resultado devuelve `set1.union(set2)` si `set1={1,2,3}` y `set2={3,4,5}`?",
+    "opciones": [],
+    "respuesta": "Devuelve `{1,2,3,4,5}`, eliminando el duplicado del elemento 3.",
+    "pista": "Pensá en el operador o método que expresa directamente esa operación.",
+    "explicacion": "La unión de conjuntos reúne todos los elementos que aparecen en cualquiera de los dos conjuntos. En Python, set.union aplica esa misma idea y elimina duplicados automáticamente. Por eso el 3 aparece una sola vez aunque esté en ambos conjuntos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 159,
+    "tema": "4 - Conjuntos",
+    "pregunta": "En una tienda online, si el conjunto Ofertas es `{Celulares, Laptops}` y Destacados es `{Laptops, Tablets}`, ¿cuál es la unión?",
+    "opciones": [],
+    "respuesta": "`{Celulares, Laptops, Tablets}`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 160,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Defina la operación de Intersección (A ∩ B) por comprensión.",
+    "opciones": [],
+    "respuesta": "`A ∩ B = {x / x ∈ A y x ∈ B}`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Definir por comprensión significa describir la propiedad que cumplen los elementos. En lugar de listar cada uno, se indica una condición común. Esto es útil cuando el conjunto es grande o cuando interesa la regla que lo caracteriza.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 161,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Cuándo se dice que dos conjuntos son disjuntos?",
+    "opciones": [],
+    "respuesta": "Cuando su intersección es vacía (`A ∩ B = ∅`).",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 162,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Defina el Complemento de un conjunto (A') respecto a U.",
+    "opciones": [],
+    "respuesta": "Es el conjunto de elementos de U que no pertenecen a A: `{x / x ∈ U y x ∉ A}`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 163,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Qué representa la Diferencia de conjuntos A − B?",
+    "opciones": [],
+    "respuesta": "Es el conjunto de los elementos que pertenecen a A pero no pertenecen a B.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 164,
+    "tema": "4 - Conjuntos",
+    "pregunta": "En un sistema de usuarios, si A son \"Registrados\" y B son \"Pagados\", ¿qué representa A − B?",
+    "opciones": [],
+    "respuesta": "Representa a los usuarios que están registrados pero que aún no han pagado.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La diferencia A − B conserva los elementos de A que no están en B. No es conmutativa, porque cambiar el orden cambia qué conjunto se toma como punto de partida. Por eso representa “A sin B”.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 165,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Qué es la Diferencia Simétrica (A Δ B)?",
+    "opciones": [],
+    "respuesta": "Es el conjunto de elementos que pertenecen a A o a B, pero no a ambos a la vez.",
+    "pista": "Compará qué elementos quedan y cuáles se eliminan.",
+    "explicacion": "La diferencia simétrica conserva los elementos que están en uno u otro conjunto, pero elimina los comunes. Es útil para detectar discrepancias entre dos colecciones. En Python se representa con ^.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 166,
+    "tema": "4 - Conjuntos",
+    "pregunta": "En informática, ¿para qué es fundamental la Diferencia Simétrica?",
+    "opciones": [],
+    "respuesta": "Es fundamental para tareas de sincronización de datos y control de versiones al destacar discrepancias.",
+    "pista": "Compará qué elementos quedan y cuáles se eliminan.",
+    "explicacion": "La diferencia simétrica conserva los elementos que están en uno u otro conjunto, pero elimina los comunes. Es útil para detectar discrepancias entre dos colecciones. En Python se representa con ^.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 167,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Según las leyes básicas, ¿qué resultado da la operación A ∪ ∅?",
+    "opciones": [],
+    "respuesta": "El resultado es el mismo conjunto A (elemento neutro).",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "El conjunto vacío no contiene elementos. Es distinto de un conjunto con cero como elemento, porque {0} sí tiene un elemento. Se denota ∅ o { } para indicar ausencia total de elementos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 168,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Cuál es el elemento absorbente de la intersección (A ∩ ∅)?",
+    "opciones": [],
+    "respuesta": "El conjunto vacío (∅).",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "El conjunto vacío no contiene elementos. Es distinto de un conjunto con cero como elemento, porque {0} sí tiene un elemento. Se denota ∅ o { } para indicar ausencia total de elementos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 169,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Defina el Producto Cartesiano A × B.",
+    "opciones": [],
+    "respuesta": "Es el conjunto de todos los pares ordenados `(a,b)` tales que `a ∈ A` y `b ∈ B`.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "El producto cartesiano forma pares ordenados. Cada elemento de A se combina con cada elemento de B, y el orden del par importa. Por eso A × B no suele coincidir con B × A.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 170,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Si el conjunto A tiene n elementos y B tiene m elementos, ¿cuántos tiene A × B?",
+    "opciones": [],
+    "respuesta": "El producto cartesiano tendrá `n × m` elementos.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 171,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Es conmutativo el producto cartesiano (A × B = B × A)?",
+    "opciones": [],
+    "respuesta": "No, el producto cartesiano no es conmutativo en general porque el orden de los componentes es importante.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "El producto cartesiano forma pares ordenados. Cada elemento de A se combina con cada elemento de B, y el orden del par importa. Por eso A × B no suele coincidir con B × A.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 172,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Qué es una Relación Binaria entre A y B?",
+    "opciones": [],
+    "respuesta": "Es cualquier subconjunto no vacío del producto cartesiano A × B.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una relación binaria selecciona algunos pares del producto cartesiano. No necesariamente toma todos los pares posibles, sino aquellos que cumplen cierta condición. Por eso puede modelar vínculos entre elementos de dos conjuntos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 173,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Cómo se define el Dominio (D) de una relación?",
+    "opciones": [],
+    "respuesta": "Es el conjunto formado por las primeras componentes de todos los pares ordenados de la relación.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El dominio de una relación se obtiene mirando las primeras componentes de sus pares. Solo aparecen los elementos que efectivamente participan como origen. Si un elemento de A no aparece en ningún par, no pertenece al dominio de esa relación.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 174,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Cómo se define la Imagen (I) de una relación?",
+    "opciones": [],
+    "respuesta": "Es el conjunto formado por las segundas componentes de los pares ordenados que pertenecen a la relación.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La imagen se obtiene mirando las segundas componentes de los pares de la relación. Representa los valores que realmente se alcanzan. No tiene por qué coincidir con todo el conjunto de llegada.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 175,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Qué propiedad cumple una relación si ∀x ∈ A, (x,x) ∈ R?",
+    "opciones": [],
+    "respuesta": "Cumple la propiedad Reflexiva.",
+    "pista": "Observá si la frase habla de todos los casos o de al menos uno.",
+    "explicacion": "El símbolo ∈ expresa pertenencia. Es una relación entre un elemento y un conjunto, no entre dos conjuntos. Escribir a ∈ A indica que a forma parte de A.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 176,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Defina la propiedad Simétrica de una relación.",
+    "opciones": [],
+    "respuesta": "Si un par `(x,y) ∈ R`, entonces el par invertido `(y,x)` también debe pertenecer a R.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "La simetría exige que cada relación pueda leerse en ambos sentidos. Si aparece (x,y), también debe aparecer (y,x). No alcanza con que ocurra en algunos casos; debe cumplirse para todos los pares de la relación.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 177,
+    "tema": "4 - Conjuntos",
+    "pregunta": "¿Qué condiciones debe cumplir una relación para ser de Equivalencia?",
+    "opciones": [],
+    "respuesta": "Debe ser Reflexiva, Simétrica y Transitiva.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una relación de equivalencia agrupa elementos que se consideran del mismo tipo según la relación. Para lograrlo necesita reflexividad, simetría y transitividad. Si falta cualquiera de esas tres propiedades, no forma clases de equivalencia correctamente.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 178,
+    "tema": "4 - Conjuntos",
+    "pregunta": "En el contexto de microservicios, si el conjunto A son servicios y B son bases de datos consultadas, ¿quién forma el Dominio?",
+    "opciones": [],
+    "respuesta": "El conjunto de microservicios que efectivamente realizan consultas.",
+    "pista": "Ubicá cada dígito según su posición y la potencia de la base correspondiente.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 179,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Exprese por comprensión el conjunto A = {naranja, violeta, verde}.",
+    "opciones": [],
+    "respuesta": "`A = {x / x es un color secundario}`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 180,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Exprese por comprensión el conjunto B = {do, re, mi, fa, sol, la, si}.",
+    "opciones": [],
+    "respuesta": "`B = {x / x es una nota musical}`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 181,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "Si A = {10,20,30} y B = {10,20,30,40}, ¿se cumple A ⊆ B?",
+    "opciones": [],
+    "respuesta": "Sí, porque todos los elementos de A están presentes en B.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "La inclusión compara conjuntos: A está incluido en B si todo elemento de A también aparece en B. No exige que B tenga solo esos elementos. Por eso A puede ser igual a B o estar contenido dentro de B.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 182,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En Python, ¿qué operador se utiliza para calcular la intersección de dos conjuntos?",
+    "opciones": [],
+    "respuesta": "El operador `&`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 183,
+    "tema": "1 - Algebra de Boole",
+    "pregunta": "En Python, ¿qué operador realiza la diferencia simétrica entre conjuntos?",
+    "opciones": [],
+    "respuesta": "El operador `^`.",
+    "pista": "Identificá primero qué elementos pertenecen a cada conjunto.",
+    "explicacion": "Un conjunto reúne elementos bien determinados: se debe poder decidir si un objeto pertenece o no. Esa precisión permite operar con ellos mediante unión, intersección, complemento y diferencia. En matemática, la pertenencia es más importante que el orden de escritura.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 184,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Dado A = {1,2,3} y R = {(1,2),(2,1),(3,3)}, ¿qué propiedad de equivalencia NO cumple?",
+    "opciones": [],
+    "respuesta": "No cumple la propiedad Reflexiva, pues faltan los pares `(1,1)` y `(2,2)`.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una relación de equivalencia agrupa elementos que se consideran del mismo tipo según la relación. Para lograrlo necesita reflexividad, simetría y transitividad. Si falta cualquiera de esas tres propiedades, no forma clases de equivalencia correctamente.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 185,
+    "tema": "4 - Conjuntos",
+    "pregunta": "Si U = {-10,-11,-7,-4,-9} y R = {(x,y) / y = x - 1}, ¿cuál es el par para x = -10?",
+    "opciones": [],
+    "respuesta": "El par es `(-10,-11)`, ya que `-11 = -10 - 1`.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La relación indica una regla: y debe ser x - 1. Sustituyendo x por -10 se obtiene y = -11. Por eso el par asociado respeta la forma (x,y) = (-10,-11).",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 186,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Cuál es la definición de una matriz en el ámbito de la informática?",
+    "opciones": [],
+    "respuesta": "Es una estructura de datos especializada compuesta por filas y columnas para la manipulación organizada de datos.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "Una matriz organiza datos en filas y columnas, lo que permite ubicar cada elemento por dos índices. En informática, esa estructura facilita representar tablas, imágenes, transformaciones y relaciones numéricas. Su utilidad aparece cuando se necesitan operaciones sistemáticas sobre muchos datos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 187,
+    "tema": "5 - Matrices",
+    "pregunta": "¿En qué se diferencia fundamentalmente una matriz de un arreglo (array) genérico?",
+    "opciones": [],
+    "respuesta": "La matriz es bidimensional y está diseñada para operaciones matemáticas específicas como multiplicación e inversión.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "Un arreglo genérico puede tener distintas formas de uso, pero una matriz se piensa específicamente como estructura bidimensional. Además, las matrices tienen operaciones matemáticas propias, como producto, traspuesta, determinante e inversa. Esa intención algebraica marca la diferencia.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 188,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué aplicaciones tienen las matrices en el campo de los gráficos por computadora?",
+    "opciones": [],
+    "respuesta": "Se utilizan para representar transformaciones como traslación, rotación, escalado y proyección de modelos 3D.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En gráficos por computadora, las matrices codifican transformaciones geométricas. Al multiplicar coordenadas por matrices se pueden rotar, trasladar, escalar o proyectar objetos. Esto permite aplicar cambios de forma uniforme a muchos puntos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 189,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué condición debe cumplirse para que una matriz sea considerada cuadrada?",
+    "opciones": [],
+    "respuesta": "El número de filas debe ser igual al número de columnas (m = n).",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "Una matriz es cuadrada cuando tiene igual cantidad de filas y columnas. Esa condición permite hablar de diagonal principal, determinante e inversa. Si no es cuadrada, varias de esas operaciones no están definidas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 190,
+    "tema": "5 - Matrices",
+    "pregunta": "En una matriz cuadrada, ¿qué elementos componen la diagonal principal?",
+    "opciones": [],
+    "respuesta": "Los elementos aᵢⱼ donde el índice de fila es igual al de la columna (i = j).",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "Una matriz es cuadrada cuando tiene igual cantidad de filas y columnas. Esa condición permite hablar de diagonal principal, determinante e inversa. Si no es cuadrada, varias de esas operaciones no están definidas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 191,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Cómo se define una matriz simétrica?",
+    "opciones": [],
+    "respuesta": "Es una matriz cuadrada donde los elementos cumplen la condición aᵢⱼ = aⱼᵢ para todo i, j.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "Una matriz simétrica coincide con su traspuesta. Eso significa que el elemento de la fila i, columna j es igual al de la fila j, columna i. La simetría obliga a que los valores se reflejen respecto de la diagonal principal.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 192,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué caracteriza a una matriz identidad (I)?",
+    "opciones": [],
+    "respuesta": "Es una matriz escalar con elementos 1 en la diagonal principal y 0 en el resto de posiciones.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "La matriz identidad actúa como neutro del producto matricial. Sus unos en la diagonal conservan las componentes principales y sus ceros evitan mezclar valores. Por eso multiplicar por I deja la matriz original sin cambios cuando el producto está definido.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 193,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué procedimiento define la obtención de la matriz traspuesta (Aᵀ)?",
+    "opciones": [],
+    "respuesta": "Consiste en intercambiar las filas por las columnas de la matriz original.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "La traspuesta intercambia filas por columnas. El elemento que estaba en la posición (i,j) pasa a la posición (j,i). Esta operación permite reorganizar una matriz y aparece en propiedades del producto.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 194,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Cuál es el requisito indispensable para realizar la suma de dos matrices?",
+    "opciones": [],
+    "respuesta": "Ambas matrices deben pertenecer a la misma clase, es decir, tener la misma dimensión (m × n).",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La suma de matrices se hace elemento a elemento. Para poder sumar cada posición con su correspondiente, ambas matrices deben tener las mismas dimensiones. Si las dimensiones no coinciden, hay posiciones sin pareja.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 195,
+    "tema": "5 - Matrices",
+    "pregunta": "Condición de conformidad: ¿Cuándo es posible realizar el producto de matrices A · B?",
+    "opciones": [],
+    "respuesta": "Cuando el número de columnas de la primera matriz (A) es igual al número de filas de la segunda (B).",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El producto matricial combina filas de la primera matriz con columnas de la segunda. Para que esa combinación sea posible, la cantidad de columnas de A debe coincidir con la cantidad de filas de B. Esa condición garantiza que cada producto interno tenga la misma longitud.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 196,
+    "tema": "5 - Matrices",
+    "pregunta": "Si A es de orden m × n y B es de orden n × p, ¿cuál es el orden de la matriz resultante R?",
+    "opciones": [],
+    "respuesta": "La matriz resultante R tendrá un orden de m × p.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "Si A tiene m filas y n columnas, y B tiene n filas y p columnas, el índice n se usa internamente en los productos. Quedan como dimensiones externas m y p. Por eso la matriz resultante es de orden m × p.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 197,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Cómo se calcula el producto de una matriz por un escalar k?",
+    "opciones": [],
+    "respuesta": "Se multiplica cada elemento aᵢⱼ de la matriz por el número real k.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "Multiplicar por un escalar significa aplicar el mismo factor a todos los elementos. No cambia la forma de la matriz, solo escala sus valores. Por eso cada entrada aᵢⱼ se transforma en k·aᵢⱼ.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 198,
+    "tema": "5 - Matrices",
+    "pregunta": "Propiedad del producto: ¿Es el producto de matrices conmutativo de forma general?",
+    "opciones": [],
+    "respuesta": "No, en general el producto de matrices no es conmutativo (A · B ≠ B · A).",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "El producto matricial combina filas de la primera matriz con columnas de la segunda. Para que esa combinación sea posible, la cantidad de columnas de A debe coincidir con la cantidad de filas de B. Esa condición garantiza que cada producto interno tenga la misma longitud.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 199,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Cómo se calcula el determinante de una matriz de orden 2?",
+    "opciones": [],
+    "respuesta": "Se calcula mediante la diferencia de los productos de las diagonales: a₁₁a₂₂ − a₂₁a₁₂.",
+    "pista": "Recordá qué indica el determinante sobre la matriz y sus operaciones posibles.",
+    "explicacion": "En una matriz 2×2, el determinante compara el producto de la diagonal principal con el producto de la diagonal secundaria. Esa diferencia mide una propiedad algebraica asociada a la matriz, como si conserva área o si puede invertirse. Por eso se calcula como a₁₁a₂₂ − a₂₁a₁₂.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 200,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Para qué tipo de matrices es aplicable la Regla de Sarrus?",
+    "opciones": [],
+    "respuesta": "Es aplicable específicamente para el cálculo de determinantes de tercer orden (3 × 3).",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La regla de Sarrus es un procedimiento específico para determinantes 3×3. Usa diagonales repetidas para organizar productos positivos y negativos. No se generaliza directamente a matrices de orden mayor.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 201,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué es el menor complementario (Mᵢⱼ) de un elemento aᵢⱼ?",
+    "opciones": [],
+    "respuesta": "Es el determinante que resulta de suprimir la fila i y la columna j de la matriz original.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El menor complementario de un elemento se obtiene eliminando su fila y su columna. El determinante de la matriz restante mide la contribución de ese elemento al desarrollo por cofactores. Por eso depende de la posición elegida.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 202,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Cuál es la fórmula para hallar el adjunto o cofactor (Aᵢⱼ) de un elemento?",
+    "opciones": [],
+    "respuesta": "Aᵢⱼ = (-1)^(i+j) · Mᵢⱼ.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El cofactor agrega al menor complementario un signo que depende de la posición. El factor (-1)^(i+j) alterna signos como un tablero. Esto permite desarrollar determinantes respetando la orientación algebraica.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 203,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué diferencia a una matriz regular de una singular?",
+    "opciones": [],
+    "respuesta": "La matriz regular tiene un determinante distinto de cero (|A| ≠ 0), mientras que la singular tiene determinante igual a cero.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "El determinante permite distinguir si una matriz cuadrada es invertible. Si es distinto de cero, la matriz es regular y tiene inversa; si vale cero, es singular. En el segundo caso hay dependencia entre filas o columnas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 204,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué papel juegan las matrices en los algoritmos de aprendizaje automático (Machine Learning)?",
+    "opciones": [],
+    "respuesta": "Facilitan tareas de reducción de dimensionalidad, extracción de características y representación de pesos en redes neuronales.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En aprendizaje automático, los datos y pesos suelen organizarse en matrices. Eso permite operar muchos valores a la vez mediante álgebra lineal. Por eso las matrices son útiles para reducir dimensiones, extraer características y representar modelos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 205,
+    "tema": "5 - Matrices",
+    "pregunta": "¿En qué motores de videojuegos es fundamental el producto de matrices para el renderizado?",
+    "opciones": [],
+    "respuesta": "Es esencial en motores como Unity o Unreal Engine para realizar movimientos de rotación, escalado y traslación.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "El producto matricial combina filas de la primera matriz con columnas de la segunda. Para que esa combinación sea posible, la cantidad de columnas de A debe coincidir con la cantidad de filas de B. Esa condición garantiza que cada producto interno tenga la misma longitud.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 206,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué operación booleana representa la disyunción (A ∨ B) entre dos matrices lógicas?",
+    "opciones": [],
+    "respuesta": "Es la operación elemento a elemento donde el resultado es 1 si al menos uno de los elementos correspondientes es 1.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "En matrices booleanas, la disyunción se aplica elemento a elemento. Cada posición compara los valores correspondientes de ambas matrices. El resultado es 1 si al menos uno de esos valores es 1.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 207,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué resultado se obtiene al realizar la conjunción A ∧ I siendo I la identidad booleana?",
+    "opciones": [],
+    "respuesta": "Se obtiene una matriz donde solo se conservan los valores de la diagonal principal de A; el resto serán 0.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La matriz identidad actúa como neutro del producto matricial. Sus unos en la diagonal conservan las componentes principales y sus ceros evitan mezclar valores. Por eso multiplicar por I deja la matriz original sin cambios cuando el producto está definido.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 208,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Cómo contribuyen las matrices al procesamiento de imágenes digitales?",
+    "opciones": [],
+    "respuesta": "Permiten realizar operaciones de filtrado, convolución y transformaciones para mejorar o analizar imágenes médicas y fotografías.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Una imagen digital puede verse como una matriz de píxeles. Operaciones como filtros o convoluciones modifican valores según su posición y vecinos. Por eso las matrices son una herramienta natural para procesar imágenes.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 209,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué es una matriz dispersa (Sparse Matrix) en computación?",
+    "opciones": [],
+    "respuesta": "Es un tipo de matriz que se utiliza para almacenar datos donde la mayoría de los elementos son cero, optimizando memoria.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "Una matriz dispersa contiene muchos ceros. Guardar todos esos ceros desperdicia memoria, así que se usan representaciones que almacenan principalmente los valores no nulos y sus posiciones. Esto mejora eficiencia en problemas grandes.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 210,
+    "tema": "5 - Matrices",
+    "pregunta": "En geometría computacional, ¿qué función cumplen las matrices de transformación?",
+    "opciones": [],
+    "respuesta": "Actúan como herramientas que trasladan, rotan y escalan figuras con precisión en CAD y realidad virtual.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Las matrices de transformación aplican cambios geométricos de forma precisa y repetible. Al multiplicar puntos por esas matrices se obtienen nuevas coordenadas. Por eso son útiles en CAD, gráficos y realidad virtual.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 211,
+    "tema": "5 - Matrices",
+    "pregunta": "Propiedad de la traspuesta: ¿A qué es igual (A · B)ᵀ?",
+    "opciones": [],
+    "respuesta": "Es igual al producto de las traspuestas en orden inverso: Bᵀ · Aᵀ.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La traspuesta intercambia filas por columnas. El elemento que estaba en la posición (i,j) pasa a la posición (j,i). Esta operación permite reorganizar una matriz y aparece en propiedades del producto.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 212,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué define a una matriz triangular superior?",
+    "opciones": [],
+    "respuesta": "Es una matriz cuadrada donde todos los elementos situados debajo de la diagonal principal son nulos.",
+    "pista": "Revisá la definición de la matriz y las condiciones de dimensión u orden.",
+    "explicacion": "Una matriz triangular superior tiene ceros debajo de la diagonal principal. Esa forma simplifica cálculos como determinantes y resolución de sistemas. La información relevante queda en la diagonal y sobre ella.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 213,
+    "tema": "5 - Matrices",
+    "pregunta": "Uso en criptografía: ¿Para qué se emplean las matrices en seguridad informática?",
+    "opciones": [],
+    "respuesta": "Se utilizan para la implementación de algoritmos de cifrado y el reconocimiento de patrones para protección de datos.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En criptografía, las matrices pueden transformar bloques de datos mediante operaciones algebraicas. Esa transformación ayuda a mezclar información y construir métodos de cifrado. La idea general es usar estructura matemática para proteger datos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 214,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué ocurre con el determinante de una matriz si toda una fila o columna es igual a cero?",
+    "opciones": [],
+    "respuesta": "El valor del determinante de dicha matriz será automáticamente cero.",
+    "pista": "Recordá qué indica el determinante sobre la matriz y sus operaciones posibles.",
+    "explicacion": "Si una fila o columna completa es cero, los términos del determinante quedan anulados en todo desarrollo posible. Eso indica dependencia y falta de volumen algebraico. Por eso el determinante resulta cero.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 215,
+    "tema": "5 - Matrices",
+    "pregunta": "Matriz Universal Booleana (U): ¿Qué valores contiene?",
+    "opciones": [],
+    "respuesta": "Es una matriz donde todos sus elementos son iguales a 1.",
+    "pista": "Pensá en los valores 0 y 1 y en cómo opera cada conectivo.",
+    "explicacion": "La matriz universal booleana representa el caso donde todas las posiciones están activadas. Como solo se usan 0 y 1, poner 1 en cada entrada indica presencia total. Sirve como referencia para operaciones booleanas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 216,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Qué técnica de modelado en teoría de control utiliza matrices para representar la dinámica de sistemas?",
+    "opciones": [],
+    "respuesta": "La representación del espacio de estados.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "La representación en espacio de estados describe un sistema mediante variables organizadas en vectores. Las matrices indican cómo esas variables se relacionan y evolucionan. Por eso es una técnica adecuada para modelar dinámicas de sistemas en teoría de control.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 217,
+    "tema": "5 - Matrices",
+    "pregunta": "¿Cuál es la utilidad del análisis de componentes principales (PCA) mediante matrices?",
+    "opciones": [],
+    "respuesta": "Es una técnica esencial para la minería de datos y sistemas de recomendación que utiliza factorización de matrices.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "PCA usa matrices para analizar variabilidad en los datos. Mediante factorización o descomposición, identifica direcciones que concentran información importante. Por eso sirve para reducir dimensiones sin perder tanta información relevante.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 218,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Definición formal: Grafo G = (V, E)",
+    "opciones": [],
+    "respuesta": "Estructura discreta que consta de un conjunto no vacío de vértices V y un conjunto E de aristas que conectan pares de vértices.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un grafo modela objetos y conexiones entre ellos. Los vértices representan las entidades y las aristas representan relaciones o enlaces. La notación G = (V,E) separa claramente ambos componentes.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 219,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "¿Qué característica distingue a un grafo simple de un multigrafo?",
+    "opciones": [],
+    "respuesta": "Un grafo simple no admite aristas múltiples entre el mismo par de vértices ni bucles.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un grafo simple restringe las conexiones para evitar bucles y aristas repetidas entre el mismo par de vértices. Un multigrafo permite más de una arista entre dos vértices. Esa diferencia cambia cómo se cuentan grados, recorridos y conexiones.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 220,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "En el contexto de modelado de rutas aéreas, ¿qué representa una arista que sale de una ciudad A y llega a una ciudad B?",
+    "opciones": [],
+    "respuesta": "Representa un vuelo que se inicia en el vértice de la ciudad A y aterriza en el vértice de la ciudad B.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "En un grafo dirigido, los vértices representan objetos o entidades, en este caso ciudades. Las aristas dirigidas representan una relación con sentido entre dos vértices. Por eso una arista que sale de A y llega a B indica un recorrido posible desde A hacia B, como un vuelo que parte de A y aterriza en B. La dirección importa porque un vuelo de A a B no garantiza uno de B a A.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 221,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "¿Bajo qué condición un grafo simple G se define como bipartito?",
+    "opciones": [],
+    "respuesta": "Cuando su conjunto de vértices V puede dividirse en dos conjuntos disjuntos V₁ y V₂ de modo que cada arista conecte un vértice de V₁ con uno de V₂.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un grafo simple restringe las conexiones para evitar bucles y aristas repetidas entre el mismo par de vértices. Un multigrafo permite más de una arista entre dos vértices. Esa diferencia cambia cómo se cuentan grados, recorridos y conexiones.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 222,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Concepto: Vértice aislado",
+    "opciones": [],
+    "respuesta": "Es un vértice cuyo grado es igual a cero (δ(v) = 0).",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "El grado de un vértice cuenta cuántas aristas inciden en él. Si no tiene ninguna conexión, su grado es cero. Por eso se lo llama aislado: no se conecta con el resto del grafo.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 223,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "¿Cómo contribuye un bucle (lazo) al grado de un vértice en un grafo no dirigido?",
+    "opciones": [],
+    "respuesta": "Contribuye con dos unidades al grado del vértice.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "En un grafo no dirigido, un bucle sale y vuelve al mismo vértice. Al contar incidencias, toca al vértice dos veces. Por eso aporta dos unidades al grado.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 224,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "La secuencia de aristas que conecta pares de vértices adyacentes sin repetir vértices se denomina \\_.",
+    "opciones": [],
+    "respuesta": "Camino simple.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Un camino simple conecta vértices adyacentes siguiendo aristas sin repetir vértices. Al no repetir vértices, se evita volver a pasar por un punto ya visitado. Esa restricción lo diferencia de recorridos menos estrictos.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 225,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "¿Cuál es la diferencia técnica entre un recorrido y un camino simple?",
+    "opciones": [],
+    "respuesta": "Un recorrido no repite aristas, mientras que un camino simple no repite vértices.",
+    "pista": "Compará qué elementos quedan y cuáles se eliminan.",
+    "explicacion": "Un camino simple no repite vértices. Al no repetir vértices, tampoco vuelve sobre puntos ya visitados. Esto lo diferencia de recorridos que pueden permitir repetir vértices mientras no repitan aristas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 226,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "¿Cuándo se dice que un grafo dirigido es fuertemente conexo?",
+    "opciones": [],
+    "respuesta": "Cuando existe un camino de a a b y un camino de b a a para cualquier par de vértices del grafo.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "En un grafo dirigido, la dirección de las aristas limita los caminos posibles. Ser fuertemente conexo exige poder ir de cualquier vértice a cualquier otro y también volver. No alcanza con conexión en un solo sentido.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 227,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Teorema de Circuitos Eulerianos: Un grafo conexo admite un circuito euleriano si y solo si cada uno de sus vértices tiene \\_.",
+    "opciones": [],
+    "respuesta": "Grado par.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un circuito euleriano recorre cada arista exactamente una vez y vuelve al punto inicial. Para que eso sea posible, cada vez que se entra a un vértice debe poder salirse por otra arista. Por eso todos los grados deben ser pares.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 228,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Si un viajero quiere recorrer todas las carreteras de una región exactamente una vez sin repetir caminos, ¿qué estructura matemática está buscando?",
+    "opciones": [],
+    "respuesta": "Un recorrido euleriano.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Si el objetivo es recorrer todas las carreteras exactamente una vez, lo importante son las aristas del grafo. Esa es la idea de un recorrido euleriano: usar cada arista una sola vez. No se exige visitar cada vértice una sola vez, porque eso sería una condición hamiltoniana.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 229,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "¿Cuál es la condición necesaria para que un grafo admita un recorrido euleriano pero no un circuito euleriano?",
+    "opciones": [],
+    "respuesta": "Que tenga exactamente dos vértices de grado impar.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un recorrido se controla por aristas: no debe repetirlas. Un camino simple se controla por vértices: no debe repetirlos. Por eso un camino simple es más restrictivo respecto de los vértices visitados.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 230,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Definición: Camino Hamiltoniano",
+    "opciones": [],
+    "respuesta": "Es un camino que pasa por todos los vértices del grafo exactamente una vez.",
+    "pista": "Recordá la definición o propiedad central asociada a esta ficha.",
+    "explicacion": "Un camino hamiltoniano se centra en visitar vértices, no aristas. Debe pasar por todos los vértices exactamente una vez. Por eso es distinto de Euler, que se ocupa de recorrer aristas.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 231,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Teorema de Dirac: Si un grafo simple tiene n vértices (n ≥ 3) y todos tienen grado ≥ n/2, entonces el grafo contiene un \\_.",
+    "opciones": [],
+    "respuesta": "Ciclo hamiltoniano.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un grafo simple restringe las conexiones para evitar bucles y aristas repetidas entre el mismo par de vértices. Un multigrafo permite más de una arista entre dos vértices. Esa diferencia cambia cómo se cuentan grados, recorridos y conexiones.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 232,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Definición: Árbol",
+    "opciones": [],
+    "respuesta": "Un árbol es un grafo no dirigido, conexo y sin ciclos.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un árbol combina dos propiedades: es conexo y no tiene ciclos. La conexión asegura que todos los vértices se alcanzan entre sí, y la ausencia de ciclos evita caminos redundantes. Por eso los árboles son estructuras mínimas de conexión.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 233,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Teorema de aristas en árboles: Un árbol con n vértices tiene exactamente \\_ aristas.",
+    "opciones": [],
+    "respuesta": "n − 1.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un árbol combina dos propiedades: es conexo y no tiene ciclos. La conexión asegura que todos los vértices se alcanzan entre sí, y la ausencia de ciclos evita caminos redundantes. Por eso los árboles son estructuras mínimas de conexión.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 234,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "En la terminología de árboles con raíz, ¿qué es un vértice interno?",
+    "opciones": [],
+    "respuesta": "Es aquel vértice que tiene al menos un hijo.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un árbol combina dos propiedades: es conexo y no tiene ciclos. La conexión asegura que todos los vértices se alcanzan entre sí, y la ausencia de ciclos evita caminos redundantes. Por eso los árboles son estructuras mínimas de conexión.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 235,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "En un recorrido en Preorden de un árbol T, ¿en qué momento se visita la raíz r?",
+    "opciones": [],
+    "respuesta": "La raíz r es el primer vértice visitado, antes de recorrer los subárboles.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un recorrido se controla por aristas: no debe repetirlas. Un camino simple se controla por vértices: no debe repetirlos. Por eso un camino simple es más restrictivo respecto de los vértices visitados.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 236,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "¿Qué es un árbol generador (Spanning Tree) de un grafo simple G?",
+    "opciones": [],
+    "respuesta": "Es un subgrafo de G que es un árbol y que contiene todos los vértices de G.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un grafo simple restringe las conexiones para evitar bucles y aristas repetidas entre el mismo par de vértices. Un multigrafo permite más de una arista entre dos vértices. Esa diferencia cambia cómo se cuentan grados, recorridos y conexiones.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 237,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Procedimiento: Búsqueda por Anchura (BFS) para árboles generadores",
+    "opciones": [],
+    "respuesta": "Se elige una raíz y se añaden sucesivamente todas las aristas incidentes para formar niveles, procesando cada nivel antes de pasar al siguiente.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un árbol combina dos propiedades: es conexo y no tiene ciclos. La conexión asegura que todos los vértices se alcanzan entre sí, y la ausencia de ciclos evita caminos redundantes. Por eso los árboles son estructuras mínimas de conexión.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 238,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "¿Cuál es el objetivo principal del Algoritmo de Kruskal?",
+    "opciones": [],
+    "respuesta": "Hallar un árbol generador mínimo seleccionando sucesivamente aristas de peso mínimo que no formen ciclos.",
+    "pista": "Buscá la palabra clave de la pregunta y relacionala con la definición vista.",
+    "explicacion": "Kruskal construye un árbol generador mínimo eligiendo aristas baratas en orden global. Cada arista se acepta solo si no forma ciclo. Así se mantiene una estructura de árbol mientras se minimiza el peso total.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 239,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Diferencia de selección: Algoritmo de Prim vs. Algoritmo de Kruskal",
+    "opciones": [],
+    "respuesta": "Prim elige aristas incidentes a vértices ya incorporados al árbol, mientras que Kruskal elige cualquier arista de peso mínimo global que no cierre ciclos.",
+    "pista": "Compará qué elementos quedan y cuáles se eliminan.",
+    "explicacion": "Kruskal construye un árbol generador mínimo eligiendo aristas baratas en orden global. Cada arista se acepta solo si no forma ciclo. Así se mantiene una estructura de árbol mientras se minimiza el peso total.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 240,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "En una matriz de adyacencia de un grafo simple no dirigido, ¿qué indica que la diagonal principal esté compuesta solo por ceros?",
+    "opciones": [],
+    "respuesta": "Indica que el grafo no posee bucles (lazos).",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "Un grafo simple restringe las conexiones para evitar bucles y aristas repetidas entre el mismo par de vértices. Un multigrafo permite más de una arista entre dos vértices. Esa diferencia cambia cómo se cuentan grados, recorridos y conexiones.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 241,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "Si un grafo dirigido se representa mediante una matriz de adyacencia, ¿qué representa la suma de los elementos de una fila?",
+    "opciones": [],
+    "respuesta": "Representa el grado de salida (out-degree) del vértice correspondiente a esa fila.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "En una matriz de adyacencia dirigida, cada fila registra las aristas que salen de un vértice. Sumar la fila cuenta cuántas conexiones salen desde él. Por eso se obtiene el grado de salida.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  },
+  {
+    "id": 242,
+    "tema": "6 - Arboles y Grafos",
+    "pregunta": "En grafos ponderados, ¿cómo se calcula la longitud de un camino?",
+    "opciones": [],
+    "respuesta": "Es la suma de los pesos de todas las aristas que componen dicho camino.",
+    "pista": "Fijate si la propiedad habla de vértices, aristas, caminos o ciclos.",
+    "explicacion": "En un grafo ponderado, cada arista tiene un peso asociado. La longitud de un camino acumula esos pesos. Por eso no alcanza contar aristas: importa el valor asignado a cada una.",
+    "estado": "sin responder",
+    "necesitaRevision": false
+  }
+];
+
+const STORAGE_KEY = 'coloquio_matematica_flashcards_estado_v1';
+const OFFICIAL_TOPICS = ["Introducción General","1 - Algebra de Boole","2- Sistema binario","3- Lógica","4 - Conjuntos","5 - Matrices","6 - Arboles y Grafos"];
+let selectedTopics = new Set(OFFICIAL_TOPICS);
+let statusFilter = 'todas';
+let deck = [];
+let idx = 0;
+let isFlipped = false;
+let hintVisible = false;
+let slideDirection = 'enter-right';
+let isMarking = false;
+
+const els = {
+  topicTabs: document.getElementById('topic-tabs'),
+  statusTabs: document.getElementById('status-tabs'),
+  studyArea: document.getElementById('study-area'),
+  correct: document.getElementById('stat-correct'),
+  wrong: document.getElementById('stat-wrong'),
+  pending: document.getElementById('stat-pending'),
+  total: document.getElementById('stat-total'),
+  rate: document.getElementById('stat-rate'),
+  progressFill: document.getElementById('progress-fill'),
+  progressLabel: document.getElementById('progress-label'),
+  navCount: document.getElementById('nav-count'),
+  navTopic: document.getElementById('nav-topic'),
+  prev: document.getElementById('btn-prev'),
+  next: document.getElementById('btn-next'),
+  hint: document.getElementById('btn-hint'),
+  flip: document.getElementById('btn-flip'),
+  shuffle: document.getElementById('btn-shuffle'),
+  reset: document.getElementById('btn-reset'),
+  markCorrect: document.getElementById('btn-correct'),
+  markWrong: document.getElementById('btn-wrong')
+};
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/\n/g, '<br>');
+}
+
+function loadProgress() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    tarjetas.forEach(card => {
+      if (saved[card.id] === 'correcta' || saved[card.id] === 'incorrecta') card.estado = saved[card.id];
+    });
+  } catch (error) {
+    console.warn('No se pudo leer el progreso guardado.', error);
+  }
+}
+
+function saveProgress() {
+  const saved = {};
+  tarjetas.forEach(card => {
+    if (card.estado !== 'sin responder') saved[card.id] = card.estado;
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+}
+
+function topics() {
+  return ['Todos', ...OFFICIAL_TOPICS];
+}
+
+function buildTopicTabs() {
+  els.topicTabs.innerHTML = '';
+  const allTopics = topics().slice(1);
+  const allSelected = allTopics.every(topic => selectedTopics.has(topic));
+  topics().forEach(topic => {
+    const count = topic === 'Todos' ? tarjetas.length : tarjetas.filter(card => card.tema === topic).length;
+    const btn = document.createElement('button');
+    const active = topic === 'Todos' ? allSelected : selectedTopics.has(topic);
+    btn.className = 'tab' + (active ? ' active' : '');
+    btn.textContent = topic + ' · ' + count;
+    btn.dataset.topic = topic;
+    btn.addEventListener('click', () => {
+      if (topic === 'Todos') {
+        selectedTopics = new Set(allTopics);
+      } else if (selectedTopics.has(topic)) {
+        selectedTopics.delete(topic);
+      } else {
+        selectedTopics.add(topic);
+      }
+      idx = 0;
+      applyFilters();
+    });
+    els.topicTabs.appendChild(btn);
+  });
+}
+
+function filteredCards() {
+  return tarjetas.filter(card => {
+    const topicOk = selectedTopics.has(card.tema);
+    const statusOk = statusFilter === 'todas' || card.estado === statusFilter;
+    return topicOk && statusOk;
+  });
+}
+
+function applyFilters() {
+  deck = filteredCards().map(card => card.id);
+  if (idx >= deck.length) idx = Math.max(deck.length - 1, 0);
+  isFlipped = false;
+  hintVisible = false;
+  render();
+}
+
+function currentCard() {
+  const id = deck[idx];
+  return tarjetas.find(card => card.id === id);
+}
+
+function updateStats() {
+  const filtered = deck.map(id => tarjetas.find(card => card.id === id)).filter(Boolean);
+  const correct = filtered.filter(card => card.estado === 'correcta').length;
+  const wrong = filtered.filter(card => card.estado === 'incorrecta').length;
+  const pending = filtered.filter(card => card.estado === 'sin responder').length;
+  const answered = correct + wrong;
+  els.total.textContent = filtered.length;
+  els.correct.textContent = correct;
+  els.wrong.textContent = wrong;
+  els.pending.textContent = pending;
+  els.rate.textContent = answered ? Math.round(correct / answered * 100) + '%' : '0%';
+}
+
+function markLabel(card) {
+  if (!card || card.estado === 'sin responder') return '';
+  return card.estado === 'correcta' ? '✓ La sabía' : '✕ No la sabía';
+}
+
+function render() {
+  buildTopicTabs();
+  updateStats();
+  document.querySelectorAll('#status-tabs .tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.status === statusFilter);
+  });
+
+  const card = currentCard();
+  const total = deck.length;
+  const pos = total ? idx + 1 : 0;
+  const pct = total ? pos / total * 100 : 0;
+  els.progressFill.style.width = pct.toFixed(1) + '%';
+  els.progressLabel.textContent = Math.round(pct) + '%';
+  els.navCount.textContent = pos + ' / ' + total;
+  els.navTopic.textContent = card ? card.tema : 'Sin tema';
+  els.prev.disabled = idx === 0 || total === 0;
+  els.next.disabled = idx >= total - 1 || total === 0;
+  els.hint.disabled = !card || hintVisible || isFlipped;
+  els.flip.disabled = !card;
+  els.flip.textContent = isFlipped ? 'Ver pregunta' : 'Ver respuesta';
+  els.shuffle.disabled = total < 2;
+  setMarkBtns(isFlipped && !!card);
+
+  if (!card) {
+    els.studyArea.innerHTML = '<div class="empty"><div><strong>No hay tarjetas para estos filtros.</strong><br>Probá cambiar el tema o el estado seleccionado.</div></div>';
+    return;
+  }
+
+  const optionsHtml = card.opciones && card.opciones.length
+    ? '<ul class="options">' + card.opciones.map(opt => '<li>' + escapeHtml(opt) + '</li>').join('') + '</ul>'
+    : '';
+  const hintHtml = hintVisible ? '<div class="hint-box"><strong>Pista:</strong> ' + escapeHtml(card.pista) + '</div>' : '';
+  const indicator = card.estado !== 'sin responder'
+    ? '<div class="card-mark-indicator show ' + card.estado + '">' + markLabel(card) + '</div>'
+    : '<div class="card-mark-indicator"></div>';
+  const backIndicator = card.estado !== 'sin responder'
+    ? '<div class="card-mark-indicator show ' + card.estado + '">' + markLabel(card) + '</div>'
+    : '<div class="card-mark-indicator"></div>';
+
+  els.studyArea.innerHTML =
+    '<div class="card-scene ' + slideDirection + '" id="card-scene">' +
+      '<div class="card-wrap ' + (isFlipped ? 'flipped' : '') + '" id="card-wrap">' +
+        '<div class="card-face face-front">' +
+          indicator +
+          '<div class="card-face-label">' + escapeHtml(card.tema) + '</div>' +
+          '<div class="card-menu">⋮</div>' +
+          '<div class="card-q">' + escapeHtml(card.pregunta) + '</div>' +
+          optionsHtml +
+          hintHtml +
+          '<div class="flip-hint">clic para voltear</div>' +
+        '</div>' +
+        '<div class="card-face face-back">' +
+          backIndicator +
+          '<div class="card-face-label">Respuesta</div>' +
+          '<div class="card-menu">⋮</div>' +
+          '<div class="card-a">' +
+            '<div class="answer-title">Respuesta correcta</div>' +
+            '<div class="answer-main">' + escapeHtml(card.respuesta) + '</div>' +
+            '<div class="answer-title">Explicación</div>' +
+            '<div class="answer-explanation">' + escapeHtml(card.explicacion) + '</div>' +
+          '</div>' +
+          '<div class="flip-hint">clic para volver</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('card-scene').addEventListener('click', flip);
+}
+
+function setMarkBtns(show) {
+  els.markCorrect.classList.toggle('visible', show);
+  els.markWrong.classList.toggle('visible', show);
+}
+
+function syncFlipDom() {
+  const wrap = document.getElementById('card-wrap');
+  if (wrap) wrap.classList.toggle('flipped', isFlipped);
+  setMarkBtns(isFlipped && !!currentCard());
+  els.hint.disabled = !currentCard() || hintVisible || isFlipped;
+  els.flip.disabled = !currentCard();
+  els.flip.textContent = isFlipped ? 'Ver pregunta' : 'Ver respuesta';
+}
+
+function flip() {
+  if (!currentCard() || isMarking) return;
+  isFlipped = !isFlipped;
+  if (isFlipped && hintVisible) {
+    hintVisible = false;
+    const hint = document.querySelector('.hint-box');
+    if (hint) hint.remove();
+  }
+  syncFlipDom();
+}
+
+function move(delta) {
+  if (isMarking) return;
+  const next = idx + delta;
+  if (next < 0 || next >= deck.length) return;
+  slideDirection = delta > 0 ? 'enter-right' : 'enter-left';
+  idx = next;
+  isFlipped = false;
+  hintVisible = false;
+  render();
+}
+
+function mark(status) {
+  const card = currentCard();
+  if (!card || !isFlipped || isMarking) return;
+  isMarking = true;
+  const oldIndex = idx;
+  const shouldAdvanceAfterFilter = statusFilter === 'todas' || statusFilter === status;
+  card.estado = status;
+  saveProgress();
+  updateStats();
+  const wrap = document.getElementById('card-wrap');
+  if (wrap) wrap.classList.add('marking-' + status);
+  setTimeout(() => {
+    isMarking = false;
+    slideDirection = 'enter-right';
+    const nextIndex = shouldAdvanceAfterFilter ? oldIndex + 1 : oldIndex;
+    applyFilters();
+    idx = Math.min(nextIndex, Math.max(deck.length - 1, 0));
+    isFlipped = false;
+    hintVisible = false;
+    render();
+  }, 520);
+}
+
+function shuffleDeck() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  idx = 0;
+  slideDirection = 'enter-right';
+  isFlipped = false;
+  hintVisible = false;
+  render();
+}
+
+function resetProgress() {
+  if (!confirm('¿Seguro que querés reiniciar todo el progreso?')) return;
+  tarjetas.forEach(card => { card.estado = 'sin responder'; });
+  localStorage.removeItem(STORAGE_KEY);
+  idx = 0;
+  isFlipped = false;
+  hintVisible = false;
+  applyFilters();
+}
+
+els.statusTabs.addEventListener('click', event => {
+  const btn = event.target.closest('.tab');
+  if (!btn) return;
+  statusFilter = btn.dataset.status;
+  idx = 0;
+  applyFilters();
+});
+els.prev.addEventListener('click', () => move(-1));
+els.next.addEventListener('click', () => move(1));
+els.hint.addEventListener('click', () => { hintVisible = true; render(); });
+els.flip.addEventListener('click', flip);
+els.shuffle.addEventListener('click', shuffleDeck);
+els.reset.addEventListener('click', resetProgress);
+els.markCorrect.addEventListener('click', () => mark('correcta'));
+els.markWrong.addEventListener('click', () => mark('incorrecta'));
+
+document.addEventListener('keydown', event => {
+  if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+  if (event.key === 'ArrowRight') move(1);
+  else if (event.key === 'ArrowLeft') move(-1);
+  else if (event.key === ' ') { event.preventDefault(); flip(); }
+  else if ((event.key === 'c' || event.key === 'C') && isFlipped) mark('correcta');
+  else if ((event.key === 'x' || event.key === 'X') && isFlipped) mark('incorrecta');
+});
+
+loadProgress();
+applyFilters();
+</script>
+</body>
+</html>
